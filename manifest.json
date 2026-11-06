@@ -1,0 +1,20 @@
+{
+  "name": "RunPulse Pro | Scientific Road Running",
+  "short_name": "RunPulse",
+  "description": "Progressive Web App para atletismo de ruta científico: ACWR, Karvonen, VDOT, GAP y nutrición deportiva",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#020617",
+  "theme_color": "#0f172a",
+  "categories": ["sports", "health", "fitness"],
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='128' fill='%230f172a'/><path d='M130 380 L220 180 L290 280 L380 130' stroke='%23a3e635' stroke-width='36' stroke-linecap='round' stroke-linejoin='round' fill='none'/><circle cx='380' cy='130' r='28' fill='%2322d3ee'/><circle cx='130' cy='380' r='22' fill='%23a3e635'/></svg>",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
