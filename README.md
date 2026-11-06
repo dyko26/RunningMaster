@@ -4,41 +4,38 @@ Progressive Web App (PWA) de alto rendimiento centrada en el atletismo de ruta c
 
 ---
 
+## 🆕 Novedades de la Versión Corregida
+
+1. **Onboarding Obligatorio y PIN Personalizado**:
+   - Al abrir la aplicación por primera vez, se solicita a cada usuario crear su propio perfil de atleta (Nombre, Objetivo fisiológico, Peso, FC Reposo, FC Máx, tiempo 10K reciente) y **definir su propio PIN de seguridad de 4 dígitos**.
+   - Se pueden crear múltiples perfiles de atletas con el botón `+ Perfil` en la cabecera. Cada perfil mantiene su propio PIN independiente para autorizar la edición (CRUD).
+2. **Pizarra en Blanco (Inicio Estricto desde Cero)**:
+   - Se han eliminado todos los datos ficticios y semillas.
+   - Las métricas inician en **0.0 km**, **0 entrenamientos**, **0 AU de carga** y ratio ACWR en estado neutro hasta que el usuario registre su actividad.
+3. **Escáner y Soporte de Pantallazos de Reloj**:
+   - Soporte para subir o arrastrar capturas de pantalla de cualquier smartwatch (**Garmin, Polar, Huawei, Apple Watch, Coros, Samsung Health**).
+   - Compresión automática en el navegador mediante HTML5 Canvas para no saturar `localStorage`.
+   - Botón `📸 Ver Reloj` en la tabla de historial para consultar la captura original del reloj junto a las métricas validadas.
+
+---
+
 ## 🚀 Despliegue en GitHub Pages (Paso a Paso)
 
-1. **Crea un repositorio en GitHub**:
+1. **Crear Repositorio en GitHub**:
    - Ve a [github.com/new](https://github.com/new).
-   - Nómbralo (por ejemplo: `runpulse-pro` o `atletismo-cientifico`).
-   - Elige visibilidad **Pública**.
+   - Nómbralo (ej: `runpulse-pro`).
+   - Selecciónalo como **Público**.
 
-2. **Sube los 4 archivos principales**:
+2. **Subir los 4 Archivos**:
    - `index.html`
    - `app.js`
    - `manifest.json`
    - `sw.js`
-   *(Puedes subirlos arrastrándolos directamente en la interfaz web de GitHub en "Upload files" o vía Git CLI).*
+   *(Arrastra los archivos desde esta carpeta directamente en la interfaz web de GitHub en "Upload files").*
 
 3. **Activar GitHub Pages**:
-   - En tu repositorio, entra a **Settings** > **Pages** (en el menú lateral izquierdo).
+   - En tu repositorio, ve a **Settings** > **Pages**.
    - En **Source**, selecciona `Deploy from a branch`.
    - En **Branch**, selecciona `main` (o `master`) y carpeta `/ (root)`.
    - Haz clic en **Save**.
-   - En 30-60 segundos, GitHub te proporcionará la URL pública HTTPS de tu app (ej: `https://tu-usuario.github.io/runpulse-pro/`).
-
-4. **Instalación como App Nativa (PWA)**:
-   - **En Android (Chrome/Brave)**: Toca los 3 puntos superiores y pulsa **"Instalar aplicación"** o **"Agregar a pantalla principal"**.
-   - **En iPhone (Safari)**: Toca el botón de Compartir y selecciona **"Agregar al inicio"**.
-   - Funcionará 100% offline sin necesidad de conexión a internet.
-
----
-
-## 🔐 Perfiles y PINs por Defecto
-
-| Perfil | Categoría | PIN de 4 Dígitos |
-| :--- | :--- | :--- |
-| **Entrenador / Élite** | Sub-38 10K / Sub-18 5K | `1111` |
-| **Atleta Progresión** | Sub-60 10K (Anti-periostitis) | `2222` |
-| **Atleta 3 (Fondo)** | Maratón Sub-3h30 | `3333` |
-| **Atleta 4 (Salud)** | Iniciación & Base Aeróbica | `4444` |
-
-*Por defecto la app arranca en modo **Solo Lectura**. Al hacer clic en "Ingresar PIN" o intentar registrar datos, se desbloquean los permisos completos de edición (CRUD).*
+   - En 30-60 segundos, GitHub te entregará el enlace HTTPS listo para abrir e instalar en tu móvil como PWA offline.
