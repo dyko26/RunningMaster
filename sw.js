@@ -3,7 +3,7 @@
  * Optimizado para uso personal offline, caching stale-while-revalidate y rendimiento rápido en ruta.
  */
 
-const CACHE_NAME = 'runpulse-dykembel-v2.0';
+const CACHE_NAME = 'runpulse-dykembel-v3.0';
 const STATIC_ASSETS = [
   './',
   './index.html',

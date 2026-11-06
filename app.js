@@ -1,192 +1,165 @@
 /**
  * ============================================================================
- * RUNPULSE PRO - ATLETISMO DE RUTA CIENTÍFICO (app.js)
- * ============================================================================
- * Sistema Personal y Exclusivo para: Dykembel Vargas (24 años, 52 kg, 1.64m)
- * Objetivos a 1 Año: 5K Sub-18:00 (3:36/km) & 10K Sub-37:00 (3:42/km)
- * Marcas Base: 1000m pista 3:22 (Reciente 3:30) | 5K PB 18:44 (Reciente 19:26)
- * Diseño Visual: Modo oscuro relajante, bajo contraste, tipografía monoespaciada
- * y acentos suaves en verde salvia y azul acero.
+ * RUNPULSE PRO - PLATAFORMA CIENTÍFICA DE ENTRENAMIENTO DE RUTA (SPA / PWA)
+ * ATLETA EXCLUSIVO: DYKEMBEL VARGAS (24 AÑOS, 52 KG, 1.64M)
+ * OBJETIVOS: 5K SUB-18:00 / 10K SUB-37:00
+ * TEMA: CLARO Y TONOS SUAVES (VISUALMENTE RELAJANTE)
  * ============================================================================
  */
 
 // ============================================================================
-// 1. ESTADO INICIAL HARDCODEADO Y CONFIGURACIÓN DEL ATLETA
+// 1. ESTADO INICIAL Y PERFIL BIOMÉTRICO (HARDCODED)
 // ============================================================================
 
 const ATHLETE_PROFILE = {
   name: 'Dykembel Vargas',
   age: 24,
-  weight: 52.0,         // kg (peso de competición ligero)
-  height: 1.64,         // metros (IMC: 19.3)
-  hrRest: 46,           // bpm (Frecuencia basal en reposo matutino)
-  hrMax: 193,           // bpm (Frecuencia máxima observada en pista)
+  weightKg: 52,
+  heightM: 1.64,
   frequencyDaysPerWeek: 6,
+  hrRest: 46, // Frecuencia Cardíaca de Reposo (bpm)
+  hrMax: 193, // Frecuencia Cardíaca Máxima comprobada en test/series (bpm)
+  baseVdot: 51.8, // Jack Daniels VDOT calculado con 5K en 19:26 y 1000m en 3:30
 
-  // Marcas Oficiales e Históricas
+  // Marcas Históricas y Recientes de Referencia
   records: {
-    track1000m: { pb: '3:22', recent: '3:30', paceRecentSec: 210, paceRecentStr: '3:30 /km' },
-    race5k: { pb: '18:44', pbPaceStr: '3:45 /km', recent: '19:26', recentPaceSec: 233, recentPaceStr: '3:53 /km' },
-    race10k: { pb: '42:36', pbNote: 'split oficial en carrera de 10.5K (~4:03/km)' },
+    track1000m: { pb: '3:22', recent: '3:30', recentSec: 210 },
+    race5k: { pb: '18:44', recent: '19:26', recentSec: 1166, recentPaceSec: 233.2, recentPaceStr: '3:53 /km' },
+    race10k: { pb: '42:36', note: 'Split registrado durante carrera de 10.5K' },
     race21k: { pb: '1:54:00' }
   },
 
-  // Metas del Próximo Año
+  // Objetivos de Rendimiento a 1 Año
   targets: {
-    target5k: { time: '17:59', paceSec: 215.8, paceStr: '3:36 /km', vdotNeeded: 56.6, label: '5K Sub-18:00' },
-    target10k: { time: '36:59', paceSec: 221.9, paceStr: '3:42 /km', vdotNeeded: 57.0, label: '10K Sub-37:00' }
-  },
-
-  // VDOT Calculado a partir de marcas recientes:
-  // 5K en 19:26 = 51.8 VDOT. Test 1000m en 3:30 = 52.0 VDOT equivalente.
-  baseVdot: 51.8,
-  currentDynamicVdot: 51.8
+    target5k: { time: '17:59', paceSec: 215.8, paceStr: '3:36 /km', vdotNeeded: 56.2 },
+    target10k: { time: '36:59', paceSec: 221.9, paceStr: '3:42 /km', vdotNeeded: 55.8 }
+  }
 };
 
+// Rotación Inicial de Calzado
 const DEFAULT_SHOES = [
   {
     id: 'asics-gt1000',
     brand: 'Asics',
     model: 'GT-1000 10',
-    usage: 'Soporte leve / Rodajes aeróbicos diarios Z2',
-    currentKm: 0.0,
+    use: 'Soporte leve / Rodajes aeróbicos diarios Z2',
+    foamType: 'FlyteFoam + Gel en talón (DuoMax)',
     maxKm: 800,
-    category: 'daily'
+    currentKm: 142.5,
+    tagColor: 'bg-emerald-50 text-emerald-800 border-emerald-200'
   },
   {
     id: 'adidas-boston11',
     brand: 'Adidas',
     model: 'Adizero Boston 11',
-    usage: 'Mixtas / Series de velocidad / Ritmo Umbral (Lightstrike Pro)',
-    currentKm: 0.0,
+    use: 'Mixtas / Series de pista 1000m / Ritmo Umbral LT2',
+    foamType: 'Lightstrike Pro + Lightstrike + Varillas EnergyRods',
     maxKm: 600,
-    category: 'quality'
+    currentKm: 88.0,
+    tagColor: 'bg-sky-50 text-sky-800 border-sky-200'
   },
   {
     id: 'olympikus-corre2',
     brand: 'Olympikus',
     model: 'Corre 2',
-    usage: 'Ligeras / Fondos largos dominicales / Recuperación Z1',
-    currentKm: 0.0,
+    use: 'Ligeras / Fondos largos dominicales / Regenerativos',
+    foamType: 'Espuma Eleva (Drop 8mm)',
     maxKm: 600,
-    category: 'longrun'
+    currentKm: 195.0,
+    tagColor: 'bg-amber-50 text-amber-800 border-amber-200'
   }
 ];
 
+// Claves de Almacenamiento en LocalStorage
 const STORAGE_KEYS = {
-  WORKOUTS: 'runpulse_dykembel_workouts_v1',
-  SHOES: 'runpulse_dykembel_shoes_v1',
-  DYNAMIC_STATE: 'runpulse_dykembel_state_v1'
+  WORKOUTS: 'runpulse_workouts_dykembel',
+  SHOES: 'runpulse_shoes_dykembel',
+  CUSTOM_PARAMS: 'runpulse_params_dykembel'
 };
 
+// Estado Reactivo de la Aplicación
 const AppState = {
+  activeTab: 'dashboard',
   workouts: [],
   shoes: [],
   dynamicVdot: ATHLETE_PROFILE.baseVdot,
-  fatigueAdjustmentSec: 0, // Ajuste dinámico de ritmo (+ seg/km si hay sobrecarga)
   fatigueStatus: 'normal', // 'normal', 'fatigued', 'supercompensated'
-  activeTab: 'dashboard',
+  fatigueAdjustmentSec: 0,
   chartInstance: null
 };
 
 // ============================================================================
-// 2. FÓRMULAS MATEMÁTICAS Y FISIOLÓGICAS COMENTADAS
+// 2. MOTOR CIENTÍFICO Y FISIOLÓGICO (CORE JS)
 // ============================================================================
 
 /**
- * ----------------------------------------------------------------------------
- * A. ZONAS DE ENTRENAMIENTO POR FRECUENCIA CARDÍACA DE RESERVA (KARVONEN)
- * ----------------------------------------------------------------------------
- * Frecuencia Cardíaca de Reserva (HRR):
- *   HRR = HR_max - HR_rest = 193 - 46 = 147 bpm
- *   HR_target = HR_rest + (%Intensidad * HRR)
- *
- * Zonas individuales calculadas para Dykembel Vargas:
- * - Z1 (50% - 60% HRR): 120 - 134 bpm | Recuperación activa, reciclaje de lactato
- * - Z2 (60% - 70% HRR): 134 - 149 bpm | Base aeróbica, FatMax (máxima quema de ácidos grasos)
- * - Z3 (70% - 80% HRR): 149 - 164 bpm | Tempo aeróbico, aumento de capilarización muscular
- * - Z4 (80% - 90% HRR): 164 - 178 bpm | Umbral de Lactato (LT2 / OBLA, ~4.0 mmol/L)
- * - Z5 (90% - 100% HRR): 178 - 193 bpm | VO2máx & Capacidad anaeróbica láctica
+ * A. FÓRMULA DE FRECUENCIA CARDÍACA DE KARVONEN
+ * FC_Objetivo = FC_Reposo + (%_Intensidad * (FC_Máx - FC_Reposo))
+ * Para Dykembel: FC_Reserva = 193 - 46 = 147 bpm
  */
-function getKarvonenZones(hrRest = ATHLETE_PROFILE.hrRest, hrMax = ATHLETE_PROFILE.hrMax) {
-  const hrr = hrMax - hrRest;
+function getKarvonenZones() {
+  const hrRest = ATHLETE_PROFILE.hrRest;
+  const hrMax = ATHLETE_PROFILE.hrMax;
+  const hrr = hrMax - hrRest; // 147 bpm
+
   return [
     {
       zone: 'Z1',
-      name: 'Regenerativo / Recup. Activa',
+      name: 'Regenerativo / Recuperación Activa',
       pct: '50% - 60%',
-      min: Math.round(hrRest + 0.50 * hrr),
-      max: Math.round(hrRest + 0.60 * hrr),
-      color: '#94a3b8',
-      desc: 'Rodajes suaves post-series para irrigación sanguínea sin estrés tisular.'
+      min: Math.round(hrRest + 0.50 * hrr), // 120 bpm
+      max: Math.round(hrRest + 0.60 * hrr), // 134 bpm
+      bgClass: 'bg-slate-50 border-slate-200 text-slate-700',
+      pillClass: 'bg-slate-100 text-slate-700 border-slate-300',
+      desc: 'Días post-calidad, activa el aclaramiento de metabolitos sin fatiga muscular.'
     },
     {
       zone: 'Z2',
-      name: 'Base Aeróbica (FatMax)',
+      name: 'Base Aeróbica / Lipólisis Eficiente',
       pct: '60% - 70%',
-      min: Math.round(hrRest + 0.60 * hrr),
-      max: Math.round(hrRest + 0.70 * hrr),
-      color: '#6ee7b7',
-      desc: 'Rodajes fundamentales de volumen. Máxima biogénesis mitocondrial.'
+      min: Math.round(hrRest + 0.60 * hrr) + 1, // 135 bpm
+      max: Math.round(hrRest + 0.70 * hrr),     // 149 bpm
+      bgClass: 'bg-emerald-50/70 border-emerald-200 text-emerald-900',
+      pillClass: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+      desc: '80% de tus kilómetros semanales. Desarrolla capilarización y densidad mitocondrial.'
     },
     {
       zone: 'Z3',
-      name: 'Tempo / Sub-Umbral',
+      name: 'Tempo / Aeróbico Medio',
       pct: '70% - 80%',
-      min: Math.round(hrRest + 0.70 * hrr),
-      max: Math.round(hrRest + 0.80 * hrr),
-      color: '#38bdf8',
-      desc: 'Ritmo crucero para construcción de resistencia en distancias medias.'
+      min: Math.round(hrRest + 0.70 * hrr) + 1, // 150 bpm
+      max: Math.round(hrRest + 0.80 * hrr),     // 164 bpm
+      bgClass: 'bg-sky-50/70 border-sky-200 text-sky-900',
+      pillClass: 'bg-sky-100 text-sky-800 border-sky-300',
+      desc: 'Rodajes progresivos controlados. Transición hacia el metabolismo mixto glucolítico.'
     },
     {
       zone: 'Z4',
-      name: 'Umbral de Lactato (LT2)',
+      name: 'Umbral de Lactato (LT2 / Anaeróbico)',
       pct: '80% - 90%',
-      min: Math.round(hrRest + 0.80 * hrr),
-      max: Math.round(hrRest + 0.90 * hrr),
-      color: '#fcd34d',
-      desc: 'Ritmo umbral sostenible por 50-60 min. Eleva el punto de inflexión de lactato.'
+      min: Math.round(hrRest + 0.80 * hrr) + 1, // 165 bpm
+      max: Math.round(hrRest + 0.90 * hrr),     // 178 bpm
+      bgClass: 'bg-amber-50/70 border-amber-200 text-amber-900',
+      pillClass: 'bg-amber-100 text-amber-800 border-amber-300',
+      desc: 'Series de 2000m o bloques de 20 min. Eleva el punto de inflexión de acumulación de lactato.'
     },
     {
       zone: 'Z5',
-      name: 'Potencia Aeróbica (VO2máx)',
+      name: 'Potencia Aeróbica (VO2máx / VAM)',
       pct: '90% - 100%',
-      min: Math.round(hrRest + 0.90 * hrr),
-      max: hrMax,
-      color: '#f87171',
-      desc: 'Series de 1000m en pista a ritmo de 3:25 - 3:30/km para expandir la VAM.'
+      min: Math.round(hrRest + 0.90 * hrr) + 1, // 179 bpm
+      max: hrMax,                               // 193 bpm
+      bgClass: 'bg-rose-50/70 border-rose-200 text-rose-900',
+      pillClass: 'bg-rose-100 text-rose-800 border-rose-300',
+      desc: 'Series de 1000m en pista a ritmo de 3:28 - 3:32 /km para expandir tu techo aeróbico.'
     }
   ];
 }
 
 /**
- * ----------------------------------------------------------------------------
  * B. MODELO VDOT AERÓBICO DE JACK DANIELS
- * ----------------------------------------------------------------------------
- * 1. Costo de oxígeno a velocidad v (metros / minuto):
- *    VO2(v) = -4.60 + 0.182258 * v + 0.000104 * v^2
- *
- * 2. Fracción de VO2máx sostenible para duración t (minutos):
- *    f(t) = 0.8 + 0.1894393 * exp(-0.012778 * t) + 0.2989558 * exp(-0.1932605 * t)
- *
- * 3. VDOT = VO2(v) / f(t)
- *
- * 4. Paces según % VDOT:
- *    - Easy (E): 70% VDOT (4:45 - 5:10/km)
- *    - Marathon (M): 80% VDOT (4:12 - 4:20/km)
- *    - Threshold / Umbral (T): 88% VDOT (3:52 - 3:56/km)
- *    - Interval / VO2máx (I): 97.5% VDOT (3:28 - 3:32/km -> series de 1000m en pista)
- *    - Repetition / Velocidad (R): 107% VDOT (3:15 - 3:20/km -> rectas y series de 200/400m)
+ * Calcula ritmos de entrenamiento precisos según el nivel aeróbico del atleta.
  */
-function calculateVDOTFromRace(distanceMeters, timeMinutes) {
-  if (!distanceMeters || !timeMinutes || timeMinutes <= 0) return ATHLETE_PROFILE.baseVdot;
-  const v = distanceMeters / timeMinutes;
-  const vo2 = -4.60 + (0.182258 * v) + (0.000104 * Math.pow(v, 2));
-  const fract = 0.80 + 0.1894393 * Math.exp(-0.012778 * timeMinutes) + 0.2989558 * Math.exp(-0.1932605 * timeMinutes);
-  if (fract <= 0) return 30.0;
-  return Number((vo2 / fract).toFixed(1));
-}
-
 function getVelocityFromVO2(vo2Target) {
   const a = 0.000104;
   const b = 0.182258;
@@ -197,10 +170,11 @@ function getVelocityFromVO2(vo2Target) {
 }
 
 function paceFromVelocity(vMetersPerMin, extraOffsetSec = 0) {
-  if (vMetersPerMin <= 0) return '--:--';
-  const paceMinutes = (1000 / vMetersPerMin) + (extraOffsetSec / 60);
-  const mins = Math.floor(paceMinutes);
-  const secs = Math.round((paceMinutes - mins) * 60);
+  if (!vMetersPerMin || vMetersPerMin <= 0) return '4:45';
+  let totalSecPerKm = (1000 / vMetersPerMin) * 60 + extraOffsetSec;
+  if (isNaN(totalSecPerKm) || totalSecPerKm <= 0) totalSecPerKm = 285;
+  const mins = Math.floor(totalSecPerKm / 60);
+  const secs = Math.round(totalSecPerKm % 60);
   const paddedSecs = secs < 10 ? `0${secs}` : (secs === 60 ? '00' : secs);
   const adjustedMins = secs === 60 ? mins + 1 : mins;
   return `${adjustedMins}:${paddedSecs}`;
@@ -209,33 +183,25 @@ function paceFromVelocity(vMetersPerMin, extraOffsetSec = 0) {
 function getDanielsPaces(vdot, fatigueOffsetSec = 0) {
   const v = parseFloat(vdot) || ATHLETE_PROFILE.baseVdot;
   return {
-    easy: paceFromVelocity(getVelocityFromVO2(v * 0.70), fatigueOffsetSec),
-    marathon: paceFromVelocity(getVelocityFromVO2(v * 0.80), fatigueOffsetSec),
-    threshold: paceFromVelocity(getVelocityFromVO2(v * 0.88), fatigueOffsetSec),
-    interval: paceFromVelocity(getVelocityFromVO2(v * 0.975), fatigueOffsetSec),
-    repetition: paceFromVelocity(getVelocityFromVO2(v * 1.07), fatigueOffsetSec)
+    easy: paceFromVelocity(getVelocityFromVO2(v * 0.70), fatigueOffsetSec),       // ~4:45 - 5:05
+    marathon: paceFromVelocity(getVelocityFromVO2(v * 0.80), fatigueOffsetSec),   // ~4:12 - 4:20
+    threshold: paceFromVelocity(getVelocityFromVO2(v * 0.88), fatigueOffsetSec),  // ~3:52 - 3:56
+    interval: paceFromVelocity(getVelocityFromVO2(v * 0.975), fatigueOffsetSec),  // ~3:28 - 3:32
+    repetition: paceFromVelocity(getVelocityFromVO2(v * 1.07), fatigueOffsetSec)  // ~3:15 - 3:20
   };
 }
 
 /**
- * ----------------------------------------------------------------------------
  * C. RATIO DE CARGA AGUDA : CRÓNICA (ACWR - GABBETT MODEL)
- * ----------------------------------------------------------------------------
  * Cuantificación del balance carga-fatiga para prevenir sobreentrenamiento:
  *   Carga de Sesión (AU) = Duración (minutos) * RPE (Borg 1-10)
  *   Carga Aguda = Promedio de carga de los últimos 7 días.
  *   Carga Crónica = Promedio de carga de los últimos 28 días.
  *   ACWR = Carga Aguda / Carga Crónica
- *
- * Zonas:
- * - < 0.8: Sub-entrenamiento
- * - 0.8 a 1.3: "Sweet Spot" (Zona óptima de adaptación)
- * - 1.3 a 1.5: Zona de precaución
- * - > 1.5: Peligro de lesión músculo-tendinosa
  */
 function calculateACWR(workouts, targetDate = new Date()) {
   if (!workouts || workouts.length === 0) {
-    return { acuteLoad: 0, chronicLoad: 0, acwr: 0.0, status: 'nodata', badgeText: 'Pizarra Limpia (0 km)', color: '#94a3b8' };
+    return { acuteLoad: 0, chronicLoad: 0, acwr: 0.0, status: 'nodata', badgeText: 'Sweet Spot (0.8 - 1.3)', color: '#059669' };
   }
 
   const ONE_DAY_MS = 24 * 60 * 60 * 1000;
@@ -267,27 +233,27 @@ function calculateACWR(workouts, targetDate = new Date()) {
   const chronicLoad = chronicSum / 28;
 
   if (chronicLoad === 0 && acuteLoad === 0) {
-    return { acuteLoad: 0, chronicLoad: 0, acwr: 0.0, status: 'nodata', badgeText: 'Sin carga reciente (0 AU)', color: '#94a3b8' };
+    return { acuteLoad: 0, chronicLoad: 0, acwr: 1.0, status: 'optimal', badgeText: 'Zona Óptima (1.00)', color: '#059669' };
   }
 
-  const acwr = chronicLoad > 0 ? Number((acuteLoad / chronicLoad).toFixed(2)) : (acuteLoad > 0 ? 1.4 : 1.0);
+  const acwr = chronicLoad > 0 ? Number((acuteLoad / chronicLoad).toFixed(2)) : (acuteLoad > 0 ? 1.35 : 1.0);
 
   let status = 'optimal';
   let badgeText = 'Zona Óptima (0.8 - 1.3)';
-  let color = '#6ee7b7'; // Verde salvia suave
+  let color = '#059669'; // Verde esmeralda suave
 
   if (acwr < 0.8) {
     status = 'undertraining';
     badgeText = 'Sub-entrenamiento (< 0.8)';
-    color = '#94a3b8'; // Gris azulado
+    color = '#64748b'; // Gris pizarra suave
   } else if (acwr > 1.5) {
     status = 'danger';
-    badgeText = 'Alerta de Carga (> 1.5)';
-    color = '#f87171'; // Rosa pastel alerta
+    badgeText = 'Alerta de Fatiga (> 1.5)';
+    color = '#e11d48'; // Rosa/rojo suave
   } else if (acwr > 1.3) {
     status = 'warning';
     badgeText = 'Precaución (1.3 - 1.5)';
-    color = '#fcd34d'; // Ámbar suave
+    color = '#d97706'; // Ámbar suave
   }
 
   return { acuteLoad: Math.round(acuteLoad), chronicLoad: Math.round(chronicLoad), acwr, status, badgeText, color };
@@ -297,10 +263,6 @@ function calculateACWR(workouts, targetDate = new Date()) {
 // 3. MOTOR DINÁMICO DE MICROCICLO Y ADAPTACIÓN AL ESFUERZO
 // ============================================================================
 
-/**
- * Analiza el historial reciente de entrenamientos de Dykembel para calibrar
- * automáticamente el VDOT dinámico o aplicar compensación por fatiga.
- */
 function analyzeFatigueAndAdaptation() {
   const recentWorkouts = [...AppState.workouts]
     .sort((a, b) => new Date(b.date) - new Date(a.date))
@@ -318,29 +280,28 @@ function analyzeFatigueAndAdaptation() {
 
   recentWorkouts.forEach(w => {
     const pace = calculatePace(w.distance, w.duration);
-    const rpe = parseInt(w.rpe) || 5;
+    const rpe = parseInt(w.rpe, 10) || 5;
 
-    // Si reporta RPE > 8 en rodaje aeróbico o FC media elevada (> 165 bpm en rodaje suave)
-    if (rpe >= 8 && w.distance <= 10) {
+    // Si reportó RPE >= 8 en un rodaje suave (ritmo > 4:40 /km)
+    if (rpe >= 8 && pace.paceSec > 280) {
       highFatigueCount++;
     }
-
-    // Si completa series o carrera a ritmo muy fuerte (< 3:35/km) con RPE moderado (<= 7)
-    if (pace.paceSec > 0 && pace.paceSec <= 215 && rpe <= 7) {
+    // Si corrió a ritmos de calidad (ritmo < 3:45 /km) con RPE cómodo (<= 6)
+    if (rpe <= 6 && pace.paceSec < 225 && pace.paceSec > 0) {
       superCompCount++;
     }
   });
 
   if (highFatigueCount >= 2) {
-    // Alerta de Fatiga: Ralentizar ritmos sugeridos entre +6 y +10 s/km para proteger sóleo y periostio
+    // Alerta de Fatiga: Ralentizar ritmos sugeridos +8 s/km para proteger músculos y tendones
     AppState.fatigueStatus = 'fatigued';
     AppState.fatigueAdjustmentSec = 8;
-    AppState.dynamicVdot = Math.max(49.0, ATHLETE_PROFILE.baseVdot - 0.8);
+    AppState.dynamicVdot = Math.max(49.0, Number((ATHLETE_PROFILE.baseVdot - 0.8).toFixed(1)));
   } else if (superCompCount >= 1) {
     // Rendimiento superior: Atleta asimilando cargas positivamente
     AppState.fatigueStatus = 'supercompensated';
     AppState.fatigueAdjustmentSec = -3;
-    AppState.dynamicVdot = Math.min(56.5, ATHLETE_PROFILE.baseVdot + 0.6);
+    AppState.dynamicVdot = Math.min(56.5, Number((ATHLETE_PROFILE.baseVdot + 0.6).toFixed(1)));
   } else {
     AppState.fatigueStatus = 'normal';
     AppState.fatigueAdjustmentSec = 0;
@@ -350,7 +311,7 @@ function analyzeFatigueAndAdaptation() {
 
 /**
  * Genera el microciclo semanal de 6 días adaptado a las marcas de Dykembel:
- * 1 Fondo largo, 2 Calidades (Series 1000m pista y Umbral), 3 Rodajes aeróbicos, 1 Descanso.
+ * 1 Fondo largo dominical, 2 Calidades (Series 1000m pista & Umbral LT2), 3 Rodajes aeróbicos Z2, 1 Descanso.
  */
 function generateDynamicMicrocycle() {
   const paces = getDanielsPaces(AppState.dynamicVdot, AppState.fatigueAdjustmentSec);
@@ -359,77 +320,98 @@ function generateDynamicMicrocycle() {
   return [
     {
       day: 'Lunes',
-      type: 'Rodaje Aeróbico Z2 + Rectas',
+      tag: 'Base Aeróbica',
+      type: 'Rodaje Aeróbico Z2 + 5 Rectas Técnicas',
       shoeId: 'asics-gt1000',
       shoeName: 'Asics GT-1000 10',
       volume: '10.0 km',
       targetPace: paces.easy,
-      hrTarget: '135 - 148 bpm',
+      hrTarget: '135 - 149 bpm',
+      pillClass: 'bg-emerald-50 text-emerald-800 border border-emerald-200',
+      badgeClass: 'bg-emerald-100 text-emerald-800',
       desc: isFatigued
-        ? 'Rodaje regenerativo suave a ritmo muy cómodo + 15 min de movilidad articular y estiramientos.'
+        ? 'Rodaje regenerativo suave a ritmo muy cómodo + 15 min de movilidad articular y estiramientos suaves.'
         : 'Rodaje continuo en Z2 estricto finalizando con 5 rectas técnicas de 100m en césped (cadencia 180+ spm).'
     },
     {
       day: 'Martes',
-      type: 'Calidad 1: Series 1000m en Pista (VAM / VO2máx)',
+      tag: 'Calidad 1 (VAM)',
+      type: 'Series de 1000m en Pista (VO2máx)',
       shoeId: 'adidas-boston11',
       shoeName: 'Adidas Adizero Boston 11',
       volume: '13.5 km',
       targetPace: paces.interval,
-      hrTarget: '178 - 190 bpm',
+      hrTarget: '179 - 193 bpm',
+      pillClass: 'bg-rose-50 text-rose-800 border border-rose-200',
+      badgeClass: 'bg-rose-100 text-rose-800',
       desc: isFatigued
-        ? 'Ajuste por fatiga: 4 x 1000m a ritmo controlado con 2 min de recuperación caminando/trotando.'
-        : `3 km calentamiento + 5 x 1000m a ritmo de ${paces.interval} (PB reciente 3:30) con 90s trote Z1 + 2.5 km enfriamiento.`
+        ? 'Ajuste de fatiga activo: 4 x 1000m a ritmo controlado con 2 min de recuperación caminando/trotando.'
+        : `3 km calentamiento + 5 × 1000m a ritmo de ${paces.interval} (PB reciente 3:30) con recup. 90s trote Z1 + 2.5 km vuelta a la calma.`
     },
     {
       day: 'Miércoles',
+      tag: 'Asimilación',
       type: 'Rodaje de Asimilación Z1-Z2',
       shoeId: 'asics-gt1000',
       shoeName: 'Asics GT-1000 10',
       volume: '8.0 km',
       targetPace: paces.easy,
-      hrTarget: '125 - 142 bpm',
-      desc: 'Rodaje conversacional suave para facilitar el aclaramiento de lactato y la recuperación neuromuscular.'
+      hrTarget: '120 - 142 bpm',
+      pillClass: 'bg-emerald-50 text-emerald-800 border border-emerald-200',
+      badgeClass: 'bg-emerald-100 text-emerald-800',
+      desc: 'Rodaje conversacional regenerativo para facilitar el aclaramiento de lactato y la recuperación neuromuscular.'
     },
     {
       day: 'Jueves',
-      type: 'Calidad 2: Ritmo Umbral de Lactato (LT2 / Tempo)',
+      tag: 'Calidad 2 (LT2)',
+      type: 'Ritmo Umbral de Lactato (Tempo)',
       shoeId: 'adidas-boston11',
       shoeName: 'Adidas Adizero Boston 11',
       volume: '14.0 km',
       targetPace: paces.threshold,
-      hrTarget: '164 - 176 bpm',
-      desc: `3 km calentamiento + 3 x 2000m sostenidos a ritmo de ${paces.threshold} (recup. 2 min trote) + 2 km enfriamiento.`
+      hrTarget: '165 - 178 bpm',
+      pillClass: 'bg-amber-50 text-amber-800 border border-amber-200',
+      badgeClass: 'bg-amber-100 text-amber-800',
+      desc: `3 km calentamiento + 3 × 2000m sostenidos a ritmo de ${paces.threshold} (recup. 2 min trote activo) + 2 km soltar piernas.`
     },
     {
       day: 'Viernes',
-      type: 'Descanso Total / Movilidad y Fuerza',
+      tag: 'Descanso Activo',
+      type: 'Descanso Total / Movilidad & Core',
       shoeId: null,
       shoeName: 'Sin calzado (Impacto 0)',
       volume: '0.0 km',
       targetPace: '--:--',
       hrTarget: '< 100 bpm',
-      desc: 'Día de regeneración pasiva o sesión de core, puente de glúteos y excéntricos de sóleo/gemelos.'
+      pillClass: 'bg-slate-100 text-slate-700 border border-slate-200',
+      badgeClass: 'bg-slate-200 text-slate-800',
+      desc: 'Día de regeneración pasiva o sesión de core, puente de glúteos y ejercicios excéntricos de sóleo/gemelos.'
     },
     {
       day: 'Sábado',
+      tag: 'Progresivo',
       type: 'Rodaje Progresivo Aeróbico',
       shoeId: 'asics-gt1000',
       shoeName: 'Asics GT-1000 10',
       volume: '9.0 km',
       targetPace: `${paces.easy} ➔ ${paces.marathon}`,
       hrTarget: '138 - 158 bpm',
-      desc: '6 km en Zona 2 aeróbica terminando los últimos 3 km a Ritmo Maratón con sensación de fluidez.'
+      pillClass: 'bg-sky-50 text-sky-800 border border-sky-200',
+      badgeClass: 'bg-sky-100 text-sky-800',
+      desc: `6 km en Zona 2 aeróbica (${paces.easy}) terminando los últimos 3 km a Ritmo Maratón (${paces.marathon}) con fluidez mecánica.`
     },
     {
       day: 'Domingo',
+      tag: 'Fondo Largo',
       type: 'Tirada Larga Aeróbica (Long Run)',
       shoeId: 'olympikus-corre2',
       shoeName: 'Olympikus Corre 2',
       volume: '17.0 km',
       targetPace: paces.easy,
       hrTarget: '135 - 150 bpm',
-      desc: 'Fondo dominical continuo para aumentar la densidad mitocondrial y la eficiencia en el uso de glucógeno. Hidratación regular cada 3 km.'
+      pillClass: 'bg-sky-50 text-sky-800 border border-sky-200',
+      badgeClass: 'bg-sky-100 text-sky-800',
+      desc: 'Fondo dominical continuo para aumentar la densidad mitocondrial y la eficiencia en el uso de glucógeno. Hidratación constante cada 3 km.'
     }
   ];
 }
@@ -474,13 +456,17 @@ function timeStringToMinutes(timeStr) {
 }
 
 function timeStringToSeconds(timeStr) {
-  return Math.round(timeStringToMinutes(timeStr) * 60);
+  if (!timeStr) return 0;
+  const parts = timeStr.trim().split(':').map(Number);
+  if (parts.length === 3) return (parts[0] * 3600) + (parts[1] * 60) + parts[2];
+  if (parts.length === 2) return (parts[0] * 60) + parts[1];
+  return 0;
 }
 
-function secondsToPaceString(totalSeconds) {
-  if (!totalSeconds || isNaN(totalSeconds) || totalSeconds <= 0) return '--:--';
-  const mins = Math.floor(totalSeconds / 60);
-  const secs = Math.round(totalSeconds % 60);
+function secondsToPaceString(totalSec) {
+  if (!totalSec || isNaN(totalSec) || totalSec <= 0) return '--:--';
+  const mins = Math.floor(totalSec / 60);
+  const secs = Math.round(totalSec % 60);
   const paddedSecs = secs < 10 ? `0${secs}` : (secs === 60 ? '00' : secs);
   const adjustedMins = secs === 60 ? mins + 1 : mins;
   return `${adjustedMins}:${paddedSecs}`;
@@ -495,30 +481,57 @@ function calculatePace(distanceKm, durationTimeStr) {
 }
 
 // ============================================================================
-// 5. CONTROLADORES DE RENDERIZADO Y DOM
+// 5. CONTROLADORES DE RENDERIZADO Y DOM (ESTILO CLARO)
 // ============================================================================
 
 function switchTab(tabName) {
   AppState.activeTab = tabName;
+
+  // Ocultar todas las pestañas
   document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+  
+  // Mostrar la pestaña activa
   const activeEl = document.getElementById(`tab-${tabName}`);
   if (activeEl) activeEl.classList.remove('hidden');
 
-  document.querySelectorAll('.nav-btn').forEach(btn => {
+  // Actualizar botones de navegación en Desktop
+  document.querySelectorAll('header .nav-btn').forEach(btn => {
     const target = btn.dataset.tab;
     if (target === tabName) {
-      btn.classList.add('text-emerald-300', 'border-b-2', 'border-emerald-400', 'bg-slate-800/80');
-      btn.classList.remove('text-slate-400');
+      btn.className = 'nav-btn px-4 py-2 rounded-lg font-medium transition text-emerald-700 bg-emerald-50 border border-emerald-200/80 shadow-2xs';
     } else {
-      btn.classList.remove('text-emerald-300', 'border-b-2', 'border-emerald-400', 'bg-slate-800/80');
-      btn.classList.add('text-slate-400');
+      btn.className = 'nav-btn px-4 py-2 rounded-lg font-medium transition text-slate-600 hover:text-slate-900 hover:bg-slate-100';
     }
   });
 
-  if (tabName === 'dashboard') renderACWRChart();
-  if (tabName === 'planner') renderMicrocycle();
-  if (tabName === 'scientific') renderScientificZones();
-  if (tabName === 'shoes') renderShoeRotation();
+  // Actualizar botones de navegación en Móvil
+  document.querySelectorAll('nav.md\\:hidden .nav-btn').forEach(btn => {
+    const target = btn.dataset.tab;
+    const labelSpan = btn.querySelector('span:last-child');
+    if (target === tabName) {
+      btn.className = 'nav-btn flex flex-col items-center justify-center py-1 text-emerald-700';
+      if (labelSpan) labelSpan.className = 'text-[9px] font-mono mt-0.5 font-bold';
+    } else {
+      btn.className = 'nav-btn flex flex-col items-center justify-center py-1 text-slate-400 hover:text-slate-700';
+      if (labelSpan) labelSpan.className = 'text-[9px] font-mono mt-0.5 font-normal';
+    }
+  });
+
+  // Re-renderizar dinámicamente según la pestaña seleccionada
+  try {
+    if (tabName === 'dashboard') {
+      renderDashboard();
+      renderACWRChart();
+    } else if (tabName === 'planner') {
+      renderMicrocycle();
+    } else if (tabName === 'scientific') {
+      renderScientificZones();
+    } else if (tabName === 'shoes') {
+      renderShoeRotation();
+    }
+  } catch (err) {
+    console.error(`Error al renderizar la pestaña ${tabName}:`, err);
+  }
 }
 
 function renderDashboard() {
@@ -529,30 +542,44 @@ function renderDashboard() {
   const current5kPaceSec = ATHLETE_PROFILE.records.race5k.recentPaceSec; // 233s = 3:53
   const target5kPaceSec = ATHLETE_PROFILE.targets.target5k.paceSec;      // 215.8s = 3:36
   const diff5k = current5kPaceSec - target5kPaceSec;                     // ~17s a recortar
-
   const diff10k = 243 - ATHLETE_PROFILE.targets.target10k.paceSec;       // ~21s a recortar
 
-  document.getElementById('dashCurrent5kPace').textContent = ATHLETE_PROFILE.records.race5k.recentPaceStr;
-  document.getElementById('dashTarget5kPace').textContent = ATHLETE_PROFILE.targets.target5k.paceStr;
-  document.getElementById('dash5kDelta').textContent = `-${Math.round(diff5k)} s/km para Sub-18`;
+  const elem5kCurrent = document.getElementById('dashCurrent5kPace');
+  if (elem5kCurrent) elem5kCurrent.textContent = ATHLETE_PROFILE.records.race5k.recentPaceStr;
 
-  document.getElementById('dashCurrent10kPace').textContent = '4:03 /km (PB 42:36)';
-  document.getElementById('dashTarget10kPace').textContent = ATHLETE_PROFILE.targets.target10k.paceStr;
-  document.getElementById('dash10kDelta').textContent = `-${Math.round(diff10k)} s/km para Sub-37`;
+  const elem5kTarget = document.getElementById('dashTarget5kPace');
+  if (elem5kTarget) elem5kTarget.textContent = ATHLETE_PROFILE.targets.target5k.paceStr;
 
-  // 2. Estado Fisiológico y VDOT Dinámico
-  document.getElementById('dashDynamicVdot').textContent = AppState.dynamicVdot.toFixed(1);
+  const elem5kDelta = document.getElementById('dash5kDelta');
+  if (elem5kDelta) elem5kDelta.textContent = `-${Math.round(diff5k)} s/km para Sub-18`;
+
+  const elem10kCurrent = document.getElementById('dashCurrent10kPace');
+  if (elem10kCurrent) elem10kCurrent.textContent = '4:03 /km (PB 42:36)';
+
+  const elem10kTarget = document.getElementById('dashTarget10kPace');
+  if (elem10kTarget) elem10kTarget.textContent = ATHLETE_PROFILE.targets.target10k.paceStr;
+
+  const elem10kDelta = document.getElementById('dash10kDelta');
+  if (elem10kDelta) elem10kDelta.textContent = `-${Math.round(diff10k)} s/km para Sub-37`;
+
+  // 2. Estado Fisiológico y VDOT
+  const headerVdot = document.getElementById('headerVdot');
+  if (headerVdot) headerVdot.textContent = AppState.dynamicVdot.toFixed(1);
+
+  const plannerVdot = document.getElementById('plannerCurrentVdot');
+  if (plannerVdot) plannerVdot.textContent = AppState.dynamicVdot.toFixed(1);
+
   const fatigueBadge = document.getElementById('dashFatigueBadge');
   if (fatigueBadge) {
     if (AppState.fatigueStatus === 'fatigued') {
-      fatigueBadge.className = 'px-2 py-0.5 rounded-full text-xs font-mono bg-rose-950/60 text-rose-300 border border-rose-800/60';
-      fatigueBadge.textContent = 'Alerta de Fatiga (+8 s/km adaptativo)';
+      fatigueBadge.className = 'px-3 py-1 rounded-full text-xs font-mono bg-rose-50 text-rose-700 border border-rose-200 font-medium';
+      fatigueBadge.textContent = '⚠️ Alerta de Fatiga (+8 s/km adaptativo)';
     } else if (AppState.fatigueStatus === 'supercompensated') {
-      fatigueBadge.className = 'px-2 py-0.5 rounded-full text-xs font-mono bg-emerald-950/60 text-emerald-300 border border-emerald-800/60';
-      fatigueBadge.textContent = 'Supercompensación Activa';
+      fatigueBadge.className = 'px-3 py-1 rounded-full text-xs font-mono bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium';
+      fatigueBadge.textContent = '⚡ Supercompensación Activa';
     } else {
-      fatigueBadge.className = 'px-2 py-0.5 rounded-full text-xs font-mono bg-slate-800 text-slate-300 border border-slate-700';
-      fatigueBadge.textContent = 'Equilibrio Fisiológico Normal';
+      fatigueBadge.className = 'px-3 py-1 rounded-full text-xs font-mono bg-slate-100 text-slate-700 border border-slate-200 font-medium';
+      fatigueBadge.textContent = '✓ Equilibrio Fisiológico Normal';
     }
   }
 
@@ -561,14 +588,23 @@ function renderDashboard() {
   const totalRuns = AppState.workouts.length;
   const acwrData = calculateACWR(AppState.workouts);
 
-  document.getElementById('kpiTotalKm').textContent = totalKm.toFixed(1);
-  document.getElementById('kpiTotalRuns').textContent = totalRuns;
-  document.getElementById('kpiAcwrVal').textContent = acwrData.acwr.toFixed(2);
-  document.getElementById('kpiAcwrBadge').textContent = acwrData.badgeText;
-  document.getElementById('kpiAcwrBadge').style.borderColor = acwrData.color;
-  document.getElementById('kpiAcwrBadge').style.color = acwrData.color;
-  document.getElementById('kpiAcuteLoad').textContent = `${acwrData.acuteLoad} AU`;
-  document.getElementById('kpiChronicLoad').textContent = `${acwrData.chronicLoad} AU`;
+  const kpiTotalKm = document.getElementById('kpiTotalKm');
+  if (kpiTotalKm) kpiTotalKm.textContent = totalKm.toFixed(1);
+
+  const kpiAcwrVal = document.getElementById('kpiAcwrVal');
+  if (kpiAcwrVal) kpiAcwrVal.textContent = acwrData.acwr.toFixed(2);
+
+  const kpiAcwrBadge = document.getElementById('kpiAcwrBadge');
+  if (kpiAcwrBadge) {
+    kpiAcwrBadge.textContent = acwrData.badgeText;
+    kpiAcwrBadge.style.color = acwrData.color;
+  }
+
+  const kpiAcuteLoad = document.getElementById('kpiAcuteLoad');
+  if (kpiAcuteLoad) kpiAcuteLoad.textContent = `${acwrData.acuteLoad} AU`;
+
+  const kpiChronicLoad = document.getElementById('kpiChronicLoad');
+  if (kpiChronicLoad) kpiChronicLoad.textContent = `${acwrData.chronicLoad} AU`;
 
   // 4. Tabla de Entrenamientos Recientes
   const tbody = document.getElementById('recentWorkoutsTableBody');
@@ -579,29 +615,27 @@ function renderDashboard() {
     if (sorted.length === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="6" class="text-center py-8 text-slate-500 font-mono text-xs">
-            Sin sesiones registradas en esta sesión. Tus datos base (5K 19:26 / 1000m 3:30) están activos.
+          <td colspan="6" class="text-center py-8 text-slate-400 font-mono text-xs">
+            Sin sesiones registradas todavía. Tus marcas base (5K en 19:26 y 1000m en 3:30) están activas.
           </td>
         </tr>
       `;
-      return;
+    } else {
+      sorted.forEach(w => {
+        const pace = calculatePace(w.distance, w.duration);
+        const tr = document.createElement('tr');
+        tr.className = 'border-b border-slate-100 hover:bg-slate-50/80 transition text-xs font-mono text-slate-700';
+        tr.innerHTML = `
+          <td class="py-2.5 px-3">${w.date}</td>
+          <td class="py-2.5 px-3 text-emerald-700 font-bold">${w.distance} km</td>
+          <td class="py-2.5 px-3">${w.duration}</td>
+          <td class="py-2.5 px-3 text-sky-700 font-semibold">${pace.paceStr}</td>
+          <td class="py-2.5 px-3">${w.avgHr ? w.avgHr + ' bpm' : '--'}</td>
+          <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-[11px] font-medium">RPE ${w.rpe || '--'}</span></td>
+        `;
+        tbody.appendChild(tr);
+      });
     }
-
-    sorted.forEach(w => {
-      const pace = calculatePace(w.distance, w.duration);
-      const shoe = AppState.shoes.find(s => s.id === w.shoeId);
-      const tr = document.createElement('tr');
-      tr.className = 'border-b border-slate-800/80 hover:bg-slate-800/40 transition text-xs font-mono text-slate-300';
-      tr.innerHTML = `
-        <td class="py-2.5 px-3">${w.date}</td>
-        <td class="py-2.5 px-3 text-emerald-300 font-bold">${w.distance} km</td>
-        <td class="py-2.5 px-3">${w.duration}</td>
-        <td class="py-2.5 px-3 text-sky-300 font-semibold">${pace.paceStr}</td>
-        <td class="py-2.5 px-3">${w.avgHr ? w.avgHr + ' bpm' : '--'}</td>
-        <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-[11px]">RPE ${w.rpe || '--'}</span></td>
-      `;
-      tbody.appendChild(tr);
-    });
   }
 }
 
@@ -609,9 +643,13 @@ function renderACWRChart() {
   const canvas = document.getElementById('acwrChartCanvas');
   if (!canvas) return;
 
+  if (typeof Chart === 'undefined') {
+    console.warn('Chart.js no está disponible en este momento.');
+    return;
+  }
+
   const labels = [];
   const acuteData = [];
-  const chronicData = [];
   const ratioData = [];
   const safeZoneUpper = [];
   const safeZoneLower = [];
@@ -624,13 +662,18 @@ function renderACWRChart() {
 
     const res = calculateACWR(AppState.workouts, d);
     acuteData.push(res.acuteLoad);
-    chronicData.push(res.chronicLoad);
     ratioData.push(res.acwr);
     safeZoneUpper.push(1.3);
     safeZoneLower.push(0.8);
   }
 
-  if (AppState.chartInstance) AppState.chartInstance.destroy();
+  if (AppState.chartInstance) {
+    try {
+      AppState.chartInstance.destroy();
+    } catch (e) {
+      console.warn('Error al destruir gráfico anterior:', e);
+    }
+  }
 
   const ctx = canvas.getContext('2d');
   AppState.chartInstance = new Chart(ctx, {
@@ -641,20 +684,20 @@ function renderACWRChart() {
         {
           label: 'Ratio ACWR (Agudo / Crónico)',
           data: ratioData,
-          borderColor: '#6ee7b7', // Verde salvia suave
-          backgroundColor: 'rgba(110, 231, 183, 0.08)',
+          borderColor: '#059669', // Verde esmeralda elegante
+          backgroundColor: 'rgba(5, 150, 105, 0.08)',
           borderWidth: 2,
           pointRadius: AppState.workouts.length > 0 ? 2.5 : 0,
-          pointBackgroundColor: '#6ee7b7',
+          pointBackgroundColor: '#059669',
           tension: 0.3,
           yAxisID: 'yRatio'
         },
         {
           label: 'Límite Seguro (1.3)',
           data: safeZoneUpper,
-          borderColor: '#fcd34d', // Ámbar suave
-          borderDash: [3, 3],
-          borderWidth: 1.2,
+          borderColor: '#d97706', // Ámbar suave
+          borderDash: [4, 4],
+          borderWidth: 1.5,
           pointRadius: 0,
           fill: false,
           yAxisID: 'yRatio'
@@ -662,18 +705,18 @@ function renderACWRChart() {
         {
           label: 'Límite Base (0.8)',
           data: safeZoneLower,
-          borderColor: '#94a3b8', // Gris acero
-          borderDash: [3, 3],
-          borderWidth: 1.2,
+          borderColor: '#94a3b8', // Gris suave
+          borderDash: [4, 4],
+          borderWidth: 1.5,
           pointRadius: 0,
           fill: false,
           yAxisID: 'yRatio'
         },
         {
-          label: 'Carga Aguda (7d)',
+          label: 'Carga Aguda 7d (AU)',
           data: acuteData,
-          borderColor: '#38bdf8', // Azul suave
-          backgroundColor: 'rgba(56, 189, 248, 0.1)',
+          borderColor: '#0284c7', // Azul suave
+          backgroundColor: 'rgba(2, 132, 199, 0.08)',
           borderWidth: 1,
           pointRadius: 0,
           fill: true,
@@ -685,46 +728,48 @@ function renderACWRChart() {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: {
-          position: 'top',
-          labels: { color: '#94a3b8', font: { family: 'monospace', size: 10 } }
-        },
+        legend: { display: false },
         tooltip: {
-          backgroundColor: '#1e293b',
-          titleColor: '#6ee7b7',
-          bodyColor: '#cbd5e1',
-          borderColor: '#475569',
-          borderWidth: 1
+          backgroundColor: '#ffffff',
+          titleColor: '#0f172a',
+          bodyColor: '#334155',
+          borderColor: '#cbd5e1',
+          borderWidth: 1,
+          padding: 10,
+          boxPadding: 4,
+          cornerRadius: 8
         }
       },
       scales: {
         x: {
-          grid: { color: 'rgba(51, 65, 85, 0.2)' },
-          ticks: { color: '#64748b', font: { family: 'monospace', size: 9 } }
+          grid: { color: 'rgba(241, 245, 249, 0.8)' },
+          ticks: { color: '#64748b', font: { family: 'monospace', size: 10 } }
         },
         yRatio: {
           type: 'linear',
           position: 'left',
           min: 0,
-          max: 2.0,
-          grid: { color: 'rgba(51, 65, 85, 0.15)' },
-          ticks: { color: '#6ee7b7', font: { family: 'monospace', size: 10 } },
-          title: { display: true, text: 'Ratio ACWR', color: '#6ee7b7', font: { size: 10, family: 'monospace' } }
+          max: 2.2,
+          grid: { color: 'rgba(241, 245, 249, 0.8)' },
+          ticks: { color: '#059669', font: { family: 'monospace', size: 10 } },
+          title: { display: true, text: 'Ratio ACWR', color: '#059669', font: { size: 10, family: 'monospace' } }
         },
         yLoad: {
           type: 'linear',
           position: 'right',
           grid: { display: false },
-          ticks: { color: '#38bdf8', font: { family: 'monospace', size: 10 } },
-          title: { display: true, text: 'Carga AU', color: '#38bdf8', font: { size: 10, family: 'monospace' } }
+          ticks: { color: '#0284c7', font: { family: 'monospace', size: 10 } },
+          title: { display: true, text: 'Carga AU', color: '#0284c7', font: { size: 10, family: 'monospace' } }
         }
       }
     }
   });
 }
 
+/**
+ * RENDERIZADOR DEL MICROCICLO DE 6 DÍAS (ENFOQUE CLARO Y SUAVE)
+ */
 function renderMicrocycle() {
   const container = document.getElementById('microcycleCardsContainer');
   if (!container) return;
@@ -734,37 +779,50 @@ function renderMicrocycle() {
 
   plan.forEach(item => {
     const card = document.createElement('div');
-    card.className = 'p-4 rounded-xl bg-slate-850 border border-slate-800 hover:border-slate-700/80 transition flex flex-col md:flex-row md:items-center justify-between gap-3';
+    card.className = 'bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-xs hover:border-slate-300 transition space-y-3';
+    
     card.innerHTML = `
-      <div class="flex items-start gap-3">
-        <span class="px-2.5 py-1 rounded-lg bg-slate-800 text-emerald-300 font-mono text-xs font-bold border border-slate-700">${item.day}</span>
-        <div>
-          <h4 class="text-sm font-bold font-mono text-slate-200">${item.type}</h4>
-          <p class="text-xs text-slate-400 mt-0.5 leading-relaxed">${item.desc}</p>
-          <div class="flex items-center gap-2 mt-2 text-[11px] font-mono text-slate-400">
-            <span>👟 ${item.shoeName}</span>
-            <span>•</span>
-            <span class="text-sky-300">FC Objetivo: ${item.hrTarget}</span>
-          </div>
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+        <div class="flex items-center gap-2.5">
+          <span class="px-2.5 py-1 rounded-lg text-xs font-mono font-bold ${item.pillClass}">
+            ${item.day}
+          </span>
+          <span class="px-2 py-0.5 rounded-md text-[11px] font-mono font-medium ${item.badgeClass}">
+            ${item.tag}
+          </span>
+          <h3 class="text-sm font-bold text-slate-800 tracking-tight font-mono">
+            ${item.type}
+          </h3>
+        </div>
+        <div class="flex items-center gap-3 font-mono text-xs text-slate-600">
+          <span>📏 <strong class="text-slate-800">${item.volume}</strong></span>
+          <span>⚡ <strong class="text-emerald-700">${item.targetPace}</strong></span>
         </div>
       </div>
 
-      <div class="flex items-center gap-4 text-right font-mono self-end md:self-center shrink-0">
-        <div>
-          <span class="text-[10px] text-slate-500 uppercase block">Volumen</span>
-          <span class="text-sm font-bold text-slate-200">${item.volume}</span>
+      <p class="text-xs sm:text-sm text-slate-600 leading-relaxed font-sans">
+        ${item.desc}
+      </p>
+
+      <div class="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs font-mono">
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 text-[11px]">
+            👟 ${item.shoeName}
+          </span>
+          <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-sky-50 border border-sky-200/80 text-sky-800 text-[11px]">
+            ❤️ FC Objetivo: ${item.hrTarget}
+          </span>
         </div>
-        <div>
-          <span class="text-[10px] text-slate-500 uppercase block">Ritmo Sugerido</span>
-          <span class="text-sm font-bold text-emerald-300">${item.targetPace}</span>
-        </div>
+
         ${item.volume !== '0.0 km' ? `
-          <button onclick="prefillWorkoutFromPlan('${item.volume.replace(' km', '')}', '${item.shoeId}', '${item.type}')" class="px-3 py-1.5 bg-slate-800 border border-emerald-500/30 text-emerald-300 hover:bg-slate-700 text-xs rounded-lg transition" title="Registrar esta sesión">
-            + Registrar
+          <button onclick="prefillWorkoutFromPlan('${item.volume.replace(' km', '')}', '${item.shoeId}', '${item.type}')" 
+            class="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/90 font-medium rounded-xl text-xs transition shadow-2xs">
+            + Registrar Sesión
           </button>
         ` : ''}
       </div>
     `;
+
     container.appendChild(card);
   });
 }
@@ -777,87 +835,96 @@ function renderScientificZones() {
     zonesContainer.innerHTML = '';
     zones.forEach(z => {
       const card = document.createElement('div');
-      card.className = 'p-3 rounded-xl bg-slate-850 border border-slate-800 flex justify-between items-center';
+      card.className = `p-3.5 rounded-xl border flex flex-col sm:flex-row justify-between sm:items-center gap-2 ${z.bgClass}`;
       card.innerHTML = `
-        <div class="flex items-center gap-3">
-          <span class="w-2 h-7 rounded-full" style="background-color: ${z.color}"></span>
-          <div>
-            <div class="text-xs font-bold font-mono text-slate-200">${z.zone}: ${z.name}</div>
-            <div class="text-[11px] text-slate-400">${z.desc}</div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold ${z.pillClass}">${z.zone}</span>
+            <h4 class="text-xs font-bold font-mono text-slate-800">${z.name}</h4>
           </div>
+          <p class="text-[11px] text-slate-500 mt-1 leading-snug">${z.desc}</p>
         </div>
-        <div class="text-right font-mono">
-          <div class="text-sm font-bold text-emerald-300">${z.min} - ${z.max} <span class="text-[10px] text-slate-500">bpm</span></div>
-          <div class="text-[10px] text-slate-500">${z.pct} HRR</div>
+        <div class="text-left sm:text-right font-mono shrink-0">
+          <span class="text-sm font-bold text-slate-800 block">${z.min} - ${z.max} bpm</span>
+          <span class="text-[10px] text-slate-500">${z.pct} de FC Reserva</span>
         </div>
       `;
       zonesContainer.appendChild(card);
     });
   }
 
-  // 2. Ritmos VDOT Jack Daniels
+  // 2. Ritmos Daniels
   const paces = getDanielsPaces(AppState.dynamicVdot, AppState.fatigueAdjustmentSec);
-  document.getElementById('paceEasyVal').textContent = `${paces.easy} /km`;
-  document.getElementById('paceMarathonVal').textContent = `${paces.marathon} /km`;
-  document.getElementById('paceThresholdVal').textContent = `${paces.threshold} /km`;
-  document.getElementById('paceIntervalVal').textContent = `${paces.interval} /km`;
-  document.getElementById('paceRepetitionVal').textContent = `${paces.repetition} /km`;
+  const easyElem = document.getElementById('paceEasyVal');
+  if (easyElem) easyElem.textContent = `${paces.easy} /km`;
+
+  const marathonElem = document.getElementById('paceMarathonVal');
+  if (marathonElem) marathonElem.textContent = `${paces.marathon} /km`;
+
+  const thresholdElem = document.getElementById('paceThresholdVal');
+  if (thresholdElem) thresholdElem.textContent = `${paces.threshold} /km`;
+
+  const intervalElem = document.getElementById('paceIntervalVal');
+  if (intervalElem) intervalElem.textContent = `${paces.interval} /km`;
+
+  const repElem = document.getElementById('paceRepetitionVal');
+  if (repElem) repElem.textContent = `${paces.repetition} /km`;
 }
 
 function renderShoeRotation() {
   const container = document.getElementById('shoesListContainer');
-  const select = document.getElementById('workoutShoeSelect');
   if (!container) return;
 
-  if (select) {
-    select.innerHTML = '<option value="">-- Sin asignar calzado --</option>';
+  container.innerHTML = '';
+
+  // Actualizar también el select del formulario de registro
+  const selectElem = document.getElementById('workoutShoeSelect');
+  if (selectElem) {
+    selectElem.innerHTML = '';
     AppState.shoes.forEach(s => {
       const opt = document.createElement('option');
       opt.value = s.id;
       opt.textContent = `${s.brand} ${s.model} (${s.currentKm.toFixed(1)} / ${s.maxKm} km)`;
-      select.appendChild(opt);
+      selectElem.appendChild(opt);
     });
   }
 
-  container.innerHTML = '';
   AppState.shoes.forEach(shoe => {
-    const pct = Math.min(100, Math.round((shoe.currentKm / shoe.maxKm) * 100));
-    let colorClass = 'bg-emerald-400';
-    let textClass = 'text-emerald-300';
-    if (pct > 80) {
-      colorClass = 'bg-rose-400';
-      textClass = 'text-rose-300';
-    } else if (pct > 55) {
-      colorClass = 'bg-amber-300';
-      textClass = 'text-amber-300';
-    }
+    const pct = Math.min(100, (shoe.currentKm / shoe.maxKm) * 100);
+    const colorClass = pct > 85 ? 'bg-rose-500' : (pct > 60 ? 'bg-amber-500' : 'bg-emerald-600');
+    const remainingKm = Math.max(0, shoe.maxKm - shoe.currentKm).toFixed(1);
 
     const card = document.createElement('div');
-    card.className = 'p-4 rounded-xl bg-slate-850 border border-slate-800 space-y-3';
+    card.className = 'bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs space-y-3';
     card.innerHTML = `
-      <div class="flex justify-between items-start">
+      <div class="flex items-start justify-between gap-2 border-b border-slate-100 pb-2.5">
         <div>
-          <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">${shoe.usage}</span>
-          <h4 class="text-sm font-bold font-mono text-slate-200 mt-1">${shoe.brand} ${shoe.model}</h4>
+          <span class="text-[10px] uppercase font-mono text-slate-500 font-semibold">${shoe.brand}</span>
+          <h3 class="text-sm font-bold text-slate-800 font-mono">${shoe.model}</h3>
         </div>
-        <div class="text-right">
-          <span class="text-base font-bold font-mono ${textClass}">${pct}%</span>
-          <span class="text-[10px] text-slate-500 font-mono block">Desgaste</span>
-        </div>
+        <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium ${shoe.tagColor}">
+          ${pct.toFixed(0)}% uso
+        </span>
       </div>
 
-      <div>
-        <div class="flex justify-between text-xs font-mono mb-1">
-          <span class="text-slate-400">Kilómetros acumulados:</span>
-          <span class="text-slate-200 font-bold">${shoe.currentKm.toFixed(1)} / ${shoe.maxKm} km</span>
+      <div class="space-y-1 text-xs">
+        <p class="text-slate-600"><strong class="text-slate-700">Uso:</strong> ${shoe.use}</p>
+        <p class="text-slate-500 text-[11px]"><strong class="text-slate-600">Espuma:</strong> ${shoe.foamType}</p>
+      </div>
+
+      <div class="space-y-1.5 pt-1">
+        <div class="flex justify-between text-xs font-mono text-slate-600">
+          <span>${shoe.currentKm.toFixed(1)} km</span>
+          <span class="font-bold text-slate-800">${shoe.maxKm} km max</span>
         </div>
-        <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+        <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
           <div class="${colorClass} h-full rounded-full transition-all duration-500" style="width: ${pct}%"></div>
         </div>
       </div>
 
-      <div class="text-[11px] font-mono text-slate-500 flex justify-between">
-        <span>${Math.max(0, shoe.maxKm - shoe.currentKm).toFixed(1)} km de vida útil restantes</span>
+      <div class="text-[11px] font-mono text-slate-500 flex justify-between pt-1 border-t border-slate-100">
+        <span>Restante: <strong class="text-slate-700">${remainingKm} km</strong></span>
+        <span class="text-emerald-700 font-medium">${pct < 85 ? '✓ Amortiguación Óptima' : '⚠️ Próximo a retiro'}</span>
       </div>
     `;
     container.appendChild(card);
@@ -873,7 +940,7 @@ function prefillWorkoutFromPlan(distStr, shoeId, typeStr) {
   if (distInput) distInput.value = distStr;
   if (shoeSelect && shoeId) shoeSelect.value = shoeId;
   if (notesInput) notesInput.value = `Sesión de plan: ${typeStr}`;
-  showToast(`📋 ${distStr} km precargados para ${typeStr}.`, 'info');
+  showToast(`📋 ${distStr} km y calzado precargados para ${typeStr}.`, 'info');
 }
 
 // ============================================================================
@@ -885,35 +952,38 @@ function setupWorkoutForm() {
   if (!form) return;
 
   const dateInput = document.getElementById('workoutDate');
-  if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
+  if (dateInput) {
+    dateInput.value = new Date().toISOString().split('T')[0];
+  }
 
   form.addEventListener('submit', (e) => {
     e.preventDefault();
 
-    const distance = parseFloat(document.getElementById('workoutDistance').value);
-    const durationStr = document.getElementById('workoutDuration').value.trim();
-    const avgHr = parseInt(document.getElementById('workoutAvgHr').value) || null;
-    const maxHr = parseInt(document.getElementById('workoutMaxHr').value) || null;
-    const rpe = parseInt(document.getElementById('workoutRpe').value) || 5;
-    const shoeId = document.getElementById('workoutShoeSelect').value;
     const date = document.getElementById('workoutDate').value;
-    const notes = document.getElementById('workoutNotes').value;
+    const distance = parseFloat(document.getElementById('workoutDistance').value);
+    const duration = document.getElementById('workoutDuration').value.trim();
+    const avgHr = parseInt(document.getElementById('workoutAvgHr').value, 10) || null;
+    const maxHr = parseInt(document.getElementById('workoutMaxHr').value, 10) || null;
+    const shoeId = document.getElementById('workoutShoeSelect').value;
+    const rpe = parseInt(document.getElementById('workoutRpe').value, 10) || 5;
+    const notes = document.getElementById('workoutNotes').value.trim();
 
-    if (isNaN(distance) || distance <= 0 || !durationStr) {
-      showToast('⚠️ Ingresa una distancia y tiempo válidos.', 'error');
+    if (!distance || distance <= 0 || !duration) {
+      showToast('Por favor introduce una distancia y un tiempo válidos.', 'error');
       return;
     }
 
     const newWorkout = {
-      id: `run-${Date.now()}`,
-      date: date || new Date().toISOString().split('T')[0],
+      id: 'w_' + Date.now(),
+      date,
       distance,
-      duration: durationStr,
+      duration,
       avgHr,
       maxHr,
-      rpe,
       shoeId,
-      notes
+      rpe,
+      notes,
+      timestamp: Date.now()
     };
 
     AppState.workouts.unshift(newWorkout);
@@ -928,13 +998,13 @@ function setupWorkoutForm() {
       }
     }
 
-    showToast(`✅ Sesión de ${distance} km registrada. Carga ACWR y calzado actualizados.`, 'success');
+    showToast(`✓ Sesión de ${distance} km guardada. ACWR y zapatillas actualizados.`, 'success');
     form.reset();
     if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
 
     analyzeFatigueAndAdaptation();
-    switchTab('dashboard');
     renderAll();
+    switchTab('dashboard');
   });
 }
 
@@ -947,19 +1017,22 @@ function showToast(message, type = 'info') {
   if (!container) return;
 
   const toast = document.createElement('div');
-  const bg = type === 'success' ? 'bg-slate-800 border-emerald-500/50 text-emerald-300' :
-             type === 'error' ? 'bg-slate-800 border-rose-500/50 text-rose-300' :
-             'bg-slate-800 border-sky-500/50 text-sky-300';
+  const bg = type === 'success' ? 'bg-white border-emerald-300 text-emerald-800 shadow-md' :
+             type === 'error' ? 'bg-white border-rose-300 text-rose-800 shadow-md' :
+             'bg-white border-slate-300 text-slate-800 shadow-md';
 
-  toast.className = `px-4 py-2.5 rounded-xl border shadow-lg flex items-center gap-2 text-xs font-mono transition-all duration-300 transform translate-y-2 opacity-0 ${bg}`;
-  toast.textContent = message;
-
+  toast.className = `px-4 py-3 rounded-xl border text-xs font-mono transition-all transform duration-300 translate-y-2 opacity-0 flex items-center gap-2 pointer-events-auto ${bg}`;
+  toast.innerHTML = `<span>${message}</span>`;
   container.appendChild(toast);
-  setTimeout(() => toast.classList.remove('translate-y-2', 'opacity-0'), 10);
+
+  requestAnimationFrame(() => {
+    toast.classList.remove('translate-y-2', 'opacity-0');
+  });
+
   setTimeout(() => {
-    toast.classList.add('opacity-0');
+    toast.classList.add('opacity-0', '-translate-y-2');
     setTimeout(() => toast.remove(), 300);
-  }, 3200);
+  }, 3500);
 }
 
 // ============================================================================
@@ -967,16 +1040,17 @@ function showToast(message, type = 'info') {
 // ============================================================================
 
 function renderAll() {
-  renderDashboard();
-  renderACWRChart();
-  renderMicrocycle();
-  renderScientificZones();
-  renderShoeRotation();
+  try { renderDashboard(); } catch (e) { console.error('Error renderDashboard:', e); }
+  try { renderACWRChart(); } catch (e) { console.error('Error renderACWRChart:', e); }
+  try { renderMicrocycle(); } catch (e) { console.error('Error renderMicrocycle:', e); }
+  try { renderScientificZones(); } catch (e) { console.error('Error renderScientificZones:', e); }
+  try { renderShoeRotation(); } catch (e) { console.error('Error renderShoeRotation:', e); }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
   initializeData();
 
+  // Configurar listeners de pestañas
   document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
   });
@@ -984,6 +1058,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setupWorkoutForm();
   renderAll();
 
+  // Registrar Service Worker para PWA Offline
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js')
       .then(reg => console.log('RunPulse PWA lista para uso offline:', reg.scope))

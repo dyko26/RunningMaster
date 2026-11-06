@@ -6,12 +6,12 @@
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#0f172a",
-  "theme_color": "#1e293b",
+  "background_color": "#f8fafc",
+  "theme_color": "#ffffff",
   "categories": ["sports", "fitness", "health"],
   "icons": [
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='128' fill='%231e293b'/><path d='M130 360 L220 190 L290 270 L380 150' stroke='%236ee7b7' stroke-width='32' stroke-linecap='round' stroke-linejoin='round' fill='none'/><circle cx='380' cy='150' r='24' fill='%2338bdf8'/><circle cx='130' cy='360' r='20' fill='%23a7f3d0'/></svg>",
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='128' fill='%23ffffff'/><path d='M130 360 L220 190 L290 270 L380 150' stroke='%23059669' stroke-width='32' stroke-linecap='round' stroke-linejoin='round' fill='none'/><circle cx='380' cy='150' r='24' fill='%230284c7'/><circle cx='130' cy='360' r='20' fill='%2310b981'/></svg>",
       "sizes": "192x192 512x512",
       "type": "image/svg+xml",
       "purpose": "any maskable"
