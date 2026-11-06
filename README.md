@@ -1,41 +1,50 @@
-# ⚡ RunPulse Pro | Scientific Road Athletics PWA
+# ⚡ RunPulse Pro | Dykembel Vargas (PWA Personal)
 
-Progressive Web App (PWA) de alto rendimiento centrada en el atletismo de ruta científico, diseñada para ser alojada de forma estática en **GitHub Pages**.
-
----
-
-## 🆕 Novedades de la Versión Corregida
-
-1. **Onboarding Obligatorio y PIN Personalizado**:
-   - Al abrir la aplicación por primera vez, se solicita a cada usuario crear su propio perfil de atleta (Nombre, Objetivo fisiológico, Peso, FC Reposo, FC Máx, tiempo 10K reciente) y **definir su propio PIN de seguridad de 4 dígitos**.
-   - Se pueden crear múltiples perfiles de atletas con el botón `+ Perfil` en la cabecera. Cada perfil mantiene su propio PIN independiente para autorizar la edición (CRUD).
-2. **Pizarra en Blanco (Inicio Estricto desde Cero)**:
-   - Se han eliminado todos los datos ficticios y semillas.
-   - Las métricas inician en **0.0 km**, **0 entrenamientos**, **0 AU de carga** y ratio ACWR en estado neutro hasta que el usuario registre su actividad.
-3. **Escáner y Soporte de Pantallazos de Reloj**:
-   - Soporte para subir o arrastrar capturas de pantalla de cualquier smartwatch (**Garmin, Polar, Huawei, Apple Watch, Coros, Samsung Health**).
-   - Compresión automática en el navegador mediante HTML5 Canvas para no saturar `localStorage`.
-   - Botón `📸 Ver Reloj` en la tabla de historial para consultar la captura original del reloj junto a las métricas validadas.
+Progressive Web App (PWA) de alto rendimiento centrada en el atletismo de ruta científico, diseñada a medida para **Dykembel Vargas** (24 años, 52 kg, 1.64m) para ser alojada de forma estática y gratuita en **GitHub Pages**.
 
 ---
 
-## 🚀 Despliegue en GitHub Pages (Paso a Paso)
+## 🎯 Objetivos Anuales y Marcas Base
 
-1. **Crear Repositorio en GitHub**:
-   - Ve a [github.com/new](https://github.com/new).
-   - Nómbralo (ej: `runpulse-pro`).
+- **5K Sub-18:00 (Meta: 17:59)**:
+  - Ritmo Objetivo: `3:36 /km`
+  - Marca Reciente: `19:26` (`3:53 /km`) | PB: `18:44`
+  - Diferencial a recortar: **-17 s/km**
+- **10K Sub-37:00 (Meta: 36:59)**:
+  - Ritmo Objetivo: `3:42 /km`
+  - Marca Base: `42:36` (`4:03 /km`, split de 10.5K)
+  - Diferencial a recortar: **-21 s/km**
+- **1000m Pista**: PB `3:22` / Reciente `3:30` (VAM / VO2máx)
+- **Frecuencia Base**: 6 días por semana
+- **Zonas Karvonen**: FC Reposo `46 bpm` | FC Máx `193 bpm`
+
+---
+
+## 👟 Rotación de Calzado Activo
+
+1. **Asics GT-1000 10**: Soporte leve y rodajes aeróbicos diarios Z2 (Vida útil: 800 km).
+2. **Adidas Adizero Boston 11**: Mixtas, series de velocidad y ritmo umbral LT2 (Vida útil: 600 km).
+3. **Olympikus Corre 2**: Ligeras para fondos largos dominicales y recuperación Z1 (Vida útil: 600 km).
+
+---
+
+## 🚀 Despliegue en GitHub Pages (en 2 minutos)
+
+1. **Crear repositorio en GitHub**:
+   - Entra a [github.com/new](https://github.com/new).
+   - Nómbralo (por ejemplo: `runpulse-dykembel` o `runpulse-pro`).
    - Selecciónalo como **Público**.
-
-2. **Subir los 4 Archivos**:
+2. **Subir los 4 archivos**:
    - `index.html`
    - `app.js`
    - `manifest.json`
    - `sw.js`
-   *(Arrastra los archivos desde esta carpeta directamente en la interfaz web de GitHub en "Upload files").*
-
+   *(Arrastra los archivos desde `C:\Users\dykel\Downloads\RunPulse_PWA` en "Upload files").*
 3. **Activar GitHub Pages**:
-   - En tu repositorio, ve a **Settings** > **Pages**.
-   - En **Source**, selecciona `Deploy from a branch`.
-   - En **Branch**, selecciona `main` (o `master`) y carpeta `/ (root)`.
+   - Ve a **Settings** > **Pages**.
+   - En **Source**, elige `Deploy from a branch`.
+   - En **Branch**, selecciona `main` y `/ (root)`.
    - Haz clic en **Save**.
-   - En 30-60 segundos, GitHub te entregará el enlace HTTPS listo para abrir e instalar en tu móvil como PWA offline.
+4. **Instalar en el móvil (Android o iPhone)**:
+   - Abre la URL generada en tu navegador móvil (Chrome o Safari).
+   - Toca **"Agregar a pantalla principal"** o **"Instalar aplicación"** para tenerla 100% offline en tu teléfono.

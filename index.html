@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>RunPulse Pro | Scientific Road Running PWA</title>
+  <title>RunPulse Pro | Dykembel Vargas - Atletismo Científico</title>
   
   <!-- PWA & Mobile Meta Tags -->
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#0f172a" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="description" content="PWA científica de alto rendimiento para corredores de ruta: Ingesta con pantallazos de reloj, ACWR, Karvonen, Jack Daniels VDOT, Minetti GAP y Nutrición." />
+  <meta name="description" content="Sistema personal de alto rendimiento y periodización científica para atletismo de ruta (Sub-18 5K / Sub-37 10K) - Dykembel Vargas." />
 
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -20,8 +20,9 @@
       theme: {
         extend: {
           colors: {
-            lime: { 400: '#a3e635', 500: '#84cc16' },
-            cyan: { 400: '#22d3ee', 500: '#06b6d4' }
+            slate: {
+              850: '#151f32'
+            }
           },
           fontFamily: {
             mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace']
@@ -35,9 +36,11 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
+    /* Modo oscuro relajante y bajo contraste */
     html, body {
       overscroll-behavior-y: none;
       -webkit-tap-highlight-color: transparent;
+      background-color: #0b1120;
     }
     input[type=number]::-webkit-inner-spin-button, 
     input[type=number]::-webkit-outer-spin-button { 
@@ -45,63 +48,50 @@
       margin: 0; 
     }
     ::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
+      width: 5px;
+      height: 5px;
     }
     ::-webkit-scrollbar-track {
-      background: #090d16;
+      background: #0f172a;
     }
     ::-webkit-scrollbar-thumb {
-      background: #1e293b;
-      border-radius: 4px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
       background: #334155;
+      border-radius: 4px;
     }
   </style>
 </head>
 
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans pb-24 md:pb-6 antialiased selection:bg-lime-500 selection:text-black">
+<body class="bg-slate-900 text-slate-300 min-h-screen flex flex-col font-sans pb-24 md:pb-6 antialiased selection:bg-emerald-500/30 selection:text-emerald-200">
 
   <!-- ===================================================================== -->
-  <!-- BARRA SUPERIOR / HEADER DE CONTROL DE ACCESO Y PERFILES -->
+  <!-- BARRA SUPERIOR / PERFIL PERSONAL DE DYKEMBEL VARGAS -->
   <!-- ===================================================================== -->
-  <header class="sticky top-0 z-30 bg-slate-900/90 backdrop-blur-md border-b border-white/[0.08] px-4 py-3">
-    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+  <header class="sticky top-0 z-30 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 py-3">
+    <div class="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-3">
       
-      <!-- Marca y Estado -->
+      <!-- Identidad del Atleta -->
       <div class="flex items-center gap-3">
-        <div class="w-8 h-8 rounded-xl bg-slate-950 border border-lime-400/40 flex items-center justify-center shadow-[0_0_15px_rgba(163,230,53,0.2)]">
-          <span class="text-lime-400 font-mono font-black text-sm">RP</span>
+        <div class="w-9 h-9 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-emerald-300 font-mono font-bold text-xs shadow-inner">
+          DV
         </div>
         <div>
           <div class="flex items-center gap-2">
-            <h1 class="text-sm font-bold tracking-wider font-mono text-white">RUNPULSE<span class="text-cyan-400 font-black">//</span><span class="text-lime-400">PRO</span></h1>
-            <span class="inline-block w-2 h-2 rounded-full bg-lime-400 animate-pulse"></span>
+            <h1 class="text-sm font-bold tracking-tight text-slate-200 font-mono">Dykembel Vargas</h1>
+            <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
           </div>
-          <p class="text-[10px] text-slate-400 font-mono uppercase tracking-tight">Scientific Road Athletics</p>
+          <p class="text-[11px] text-slate-400 font-mono">24 años • 52 kg • 1.64m • 6 días/sem</p>
         </div>
       </div>
 
-      <!-- Selector de Perfil, Botón Nuevo Perfil y PIN -->
-      <div class="flex items-center gap-2.5">
-        <div class="flex flex-col items-end">
-          <div class="flex items-center gap-1.5">
-            <select id="profileSelector" class="bg-slate-950 text-slate-200 text-xs font-mono px-2.5 py-1.5 rounded-lg border border-slate-700 focus:outline-none focus:border-cyan-400">
-              <!-- Inyectado por JS -->
-            </select>
-            <button id="btnHeaderNewProfile" class="p-1.5 bg-slate-800 hover:bg-slate-700 text-lime-400 rounded-lg border border-lime-500/30 text-xs font-mono transition" title="Crear nuevo perfil de atleta">
-              + Perfil
-            </button>
-          </div>
-          <div class="flex items-center gap-2 mt-1">
-            <span id="lockBadge" class="px-2 py-0.5 text-xs font-mono rounded-full bg-slate-800 text-slate-400 border border-slate-700 flex items-center gap-1">
-              <span>🔒</span><span>SOLO LECTURA</span>
-            </span>
-            <button id="lockToggleBtn" class="text-xs text-lime-400 hover:text-lime-300 font-semibold underline cursor-pointer">
-              Ingresar PIN
-            </button>
-          </div>
+      <!-- VDOT Actual y Objetivos Anuales -->
+      <div class="flex items-center gap-2 text-right font-mono">
+        <div class="px-3 py-1 rounded-xl bg-slate-850 border border-slate-800">
+          <span class="text-[10px] text-slate-400 uppercase block">VDOT Actual</span>
+          <span id="dashDynamicVdot" class="text-xs font-bold text-emerald-300">51.8</span>
+        </div>
+        <div class="px-3 py-1 rounded-xl bg-slate-850 border border-slate-800">
+          <span class="text-[10px] text-slate-400 uppercase block">Metas 1 Año</span>
+          <span class="text-xs font-semibold text-sky-300">Sub-18 / Sub-37</span>
         </div>
       </div>
 
@@ -109,27 +99,24 @@
   </header>
 
   <!-- ===================================================================== -->
-  <!-- NAVEGACIÓN PRINCIPAL (ESCRITORIO / TABLET) -->
+  <!-- NAVEGACIÓN SUPERIOR (ESCRITORIO / TABLET) -->
   <!-- ===================================================================== -->
-  <nav class="hidden md:flex bg-slate-900/60 border-b border-slate-800/80 px-4">
-    <div class="max-w-7xl mx-auto flex items-center space-x-1">
-      <button data-tab="dashboard" class="nav-btn px-4 py-3 text-xs font-mono font-medium text-lime-400 border-b-2 border-lime-400 bg-slate-800/60 transition">
-        📊 Dashboard & ACWR
+  <nav class="hidden md:flex bg-slate-900/80 border-b border-slate-800 px-4">
+    <div class="max-w-6xl mx-auto flex items-center space-x-1">
+      <button data-tab="dashboard" class="nav-btn px-4 py-3 text-xs font-mono font-medium text-emerald-300 border-b-2 border-emerald-400 bg-slate-800/80 transition">
+        📊 Panel de Progreso & ACWR
       </button>
-      <button data-tab="ingest" class="nav-btn px-4 py-3 text-xs font-mono font-medium text-slate-400 hover:text-white transition">
-        ⌚ Ingesta & Pantallazos
+      <button data-tab="planner" class="nav-btn px-4 py-3 text-xs font-mono font-medium text-slate-400 hover:text-slate-200 transition">
+        📅 Microciclo 6 Días (Dinámico)
       </button>
-      <button data-tab="scientific" class="nav-btn px-4 py-3 text-xs font-mono font-medium text-slate-400 hover:text-white transition">
-        🔬 Motor Científico
+      <button data-tab="log" class="nav-btn px-4 py-3 text-xs font-mono font-medium text-slate-400 hover:text-slate-200 transition">
+        ✍️ Registrar Sesión
       </button>
-      <button data-tab="planner" class="nav-btn px-4 py-3 text-xs font-mono font-medium text-slate-400 hover:text-white transition">
-        📅 Planificador
+      <button data-tab="scientific" class="nav-btn px-4 py-3 text-xs font-mono font-medium text-slate-400 hover:text-slate-200 transition">
+        🔬 Zonas Karvonen & VDOT
       </button>
-      <button data-tab="nutrition" class="nav-btn px-4 py-3 text-xs font-mono font-medium text-slate-400 hover:text-white transition">
-        🧪 Lab Nutrición
-      </button>
-      <button data-tab="shoes" class="nav-btn px-4 py-3 text-xs font-mono font-medium text-slate-400 hover:text-white transition">
-        👟 Rotación Zapatillas
+      <button data-tab="shoes" class="nav-btn px-4 py-3 text-xs font-mono font-medium text-slate-400 hover:text-slate-200 transition">
+        👟 Rotación de Calzado
       </button>
     </div>
   </nav>
@@ -137,99 +124,160 @@
   <!-- ===================================================================== -->
   <!-- CONTENEDOR CENTRAL DE LA APLICACIÓN -->
   <!-- ===================================================================== -->
-  <main class="max-w-7xl mx-auto w-full px-4 py-5 flex-1">
+  <main class="max-w-6xl mx-auto w-full px-4 py-5 flex-1">
 
     <!-- ------------------------------------------------------------------- -->
-    <!-- TAB 1: DASHBOARD & MÉTRICAS ACWR -->
+    <!-- TAB 1: DASHBOARD DE RENDIMIENTO & CARGA ACWR -->
     <!-- ------------------------------------------------------------------- -->
-    <section id="tab-dashboard" class="tab-content space-y-6">
+    <section id="tab-dashboard" class="tab-content space-y-5">
       
-      <!-- Fila de Tarjetas KPI -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div class="p-4 rounded-2xl bg-slate-900/80 border border-white/[0.06] backdrop-blur-sm">
-          <div class="text-[10px] text-slate-400 uppercase font-mono tracking-wider">Distancia Total</div>
-          <div class="flex items-baseline gap-1 mt-1">
-            <span id="kpiTotalKm" class="text-2xl md:text-3xl font-black font-mono text-white">0.0</span>
-            <span class="text-xs font-mono text-lime-400 font-bold">km</span>
-          </div>
-          <div class="text-[11px] text-slate-500 font-mono mt-1">Historial acumulado</div>
-        </div>
-
-        <div class="p-4 rounded-2xl bg-slate-900/80 border border-white/[0.06] backdrop-blur-sm">
-          <div class="text-[10px] text-slate-400 uppercase font-mono tracking-wider">Sesiones Totales</div>
-          <div class="flex items-baseline gap-1 mt-1">
-            <span id="kpiTotalRuns" class="text-2xl md:text-3xl font-black font-mono text-cyan-400">0</span>
-            <span class="text-xs font-mono text-slate-400">runs</span>
-          </div>
-          <div class="text-[11px] text-slate-500 font-mono mt-1">Registros validados</div>
-        </div>
-
-        <div class="p-4 rounded-2xl bg-slate-900/80 border border-white/[0.06] backdrop-blur-sm col-span-2 md:col-span-2">
+      <!-- Comparativa de Ritmos Objetivo vs Actuales (5K y 10K) -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <!-- 5K Card -->
+        <div class="p-4 rounded-2xl bg-slate-850 border border-slate-800 space-y-3">
           <div class="flex justify-between items-start">
-            <div class="text-[10px] text-slate-400 uppercase font-mono tracking-wider">Ratio de Carga Aguda:Crónica (ACWR)</div>
-            <span id="kpiAcwrBadge" class="text-[11px] font-mono px-2 py-0.5 rounded-full border bg-slate-950 font-bold">Pizarra en Cero</span>
+            <div>
+              <span class="text-[10px] font-mono text-slate-400 uppercase tracking-wider block">Objetivo Principal 1</span>
+              <h3 class="text-sm font-bold font-mono text-slate-200">5K SUB-18:00 (PB 18:44 / Reciente 19:26)</h3>
+            </div>
+            <span class="text-xs font-mono px-2 py-0.5 rounded-full bg-emerald-950/60 text-emerald-300 border border-emerald-800/60 font-semibold">
+              Meta: 17:59
+            </span>
           </div>
-          <div class="flex items-baseline gap-3 mt-1">
-            <span id="kpiAcwrVal" class="text-3xl md:text-4xl font-black font-mono text-lime-400">0.00</span>
-            <div class="text-xs font-mono text-slate-400">
-              Aguda: <span id="kpiAcuteLoad" class="text-white font-bold">0 AU</span> | 
-              Crónica: <span id="kpiChronicLoad" class="text-white font-bold">0 AU</span>
+
+          <div class="grid grid-cols-2 gap-3 font-mono text-xs pt-1">
+            <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+              <span class="text-[10px] text-slate-500 uppercase block">Ritmo Reciente (19:26)</span>
+              <span id="dashCurrent5kPace" class="text-sm font-bold text-slate-300">3:53 /km</span>
+            </div>
+            <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+              <span class="text-[10px] text-slate-500 uppercase block">Ritmo Objetivo</span>
+              <span id="dashTarget5kPace" class="text-sm font-bold text-emerald-300">3:36 /km</span>
             </div>
           </div>
-          <div class="text-[11px] text-slate-500 font-mono mt-1">Zona segura recomendada por Tim Gabbett: 0.8 a 1.3</div>
+
+          <div class="flex justify-between items-center text-xs font-mono text-slate-400 pt-1">
+            <span>Diferencial de Ritmo:</span>
+            <span id="dash5kDelta" class="text-emerald-300 font-semibold">-17 s/km para Sub-18</span>
+          </div>
+        </div>
+
+        <!-- 10K Card -->
+        <div class="p-4 rounded-2xl bg-slate-850 border border-slate-800 space-y-3">
+          <div class="flex justify-between items-start">
+            <div>
+              <span class="text-[10px] font-mono text-slate-400 uppercase tracking-wider block">Objetivo Principal 2</span>
+              <h3 class="text-sm font-bold font-mono text-slate-200">10K SUB-37:00 (PB Split 42:36 en 10.5K)</h3>
+            </div>
+            <span class="text-xs font-mono px-2 py-0.5 rounded-full bg-sky-950/60 text-sky-300 border border-sky-800/60 font-semibold">
+              Meta: 36:59
+            </span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3 font-mono text-xs pt-1">
+            <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+              <span class="text-[10px] text-slate-500 uppercase block">Ritmo Base Histórico</span>
+              <span id="dashCurrent10kPace" class="text-sm font-bold text-slate-300">4:03 /km</span>
+            </div>
+            <div class="p-2.5 rounded-xl bg-slate-900 border border-slate-800">
+              <span class="text-[10px] text-slate-500 uppercase block">Ritmo Objetivo</span>
+              <span id="dashTarget10kPace" class="text-sm font-bold text-sky-300">3:42 /km</span>
+            </div>
+          </div>
+
+          <div class="flex justify-between items-center text-xs font-mono text-slate-400 pt-1">
+            <span>Diferencial de Ritmo:</span>
+            <span id="dash10kDelta" class="text-sky-300 font-semibold">-21 s/km para Sub-37</span>
+          </div>
         </div>
       </div>
 
-      <!-- Gráfico Científico de Carga ACWR con Chart.js -->
-      <div class="p-4 md:p-5 rounded-2xl bg-slate-900/80 border border-white/[0.06] shadow-xl">
-        <div class="flex flex-col md:flex-row justify-between md:items-center gap-2 mb-4">
-          <div>
-            <h3 class="text-sm font-bold font-mono text-white flex items-center gap-2">
-              <span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
-              CINÉTICA DE CARGA ACWR & ZONAS DE RIESGO (28 DÍAS)
-            </h3>
-            <p class="text-xs text-slate-400 mt-0.5">Línea Verde: Ratio ACWR. Área Cian: Carga Aguda. Rango Óptimo: 0.8 - 1.3.</p>
+      <!-- Tarjeta de Estado Fisiológico Dinámico -->
+      <div class="p-4 rounded-2xl bg-slate-850 border border-slate-800 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+        <div>
+          <div class="text-[10px] text-slate-400 uppercase font-mono tracking-wider">Monitoreo de Asimilación & Fatiga</div>
+          <div class="text-xs text-slate-300 font-mono mt-0.5">El motor analiza tu RPE y pulsaciones para proteger sóleos y periostio tibial.</div>
+        </div>
+        <span id="dashFatigueBadge" class="self-start sm:self-auto px-2.5 py-1 rounded-full text-xs font-mono bg-slate-800 text-slate-300 border border-slate-700">
+          Equilibrio Fisiológico Normal
+        </span>
+      </div>
+
+      <!-- KPIs de Carga ACWR -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="p-4 rounded-2xl bg-slate-850 border border-slate-800">
+          <div class="text-[10px] text-slate-400 uppercase font-mono tracking-wider">Kilómetros Totales</div>
+          <div class="flex items-baseline gap-1 mt-1">
+            <span id="kpiTotalKm" class="text-2xl font-black font-mono text-slate-100">0.0</span>
+            <span class="text-xs font-mono text-emerald-300">km</span>
           </div>
-          <div class="flex items-center gap-2 text-[11px] font-mono">
-            <span class="inline-flex items-center gap-1 text-sky-400"><span class="w-2 h-2 rounded bg-sky-400"></span> &lt;0.8 Sub</span>
-            <span class="inline-flex items-center gap-1 text-lime-400"><span class="w-2 h-2 rounded bg-lime-400"></span> 0.8-1.3 Óptimo</span>
-            <span class="inline-flex items-center gap-1 text-amber-400"><span class="w-2 h-2 rounded bg-amber-400"></span> 1.3-1.5 Alerta</span>
-            <span class="inline-flex items-center gap-1 text-red-400"><span class="w-2 h-2 rounded bg-red-400"></span> &gt;1.5 Peligro</span>
+          <div class="text-[10px] text-slate-500 font-mono mt-1">Persistido localmente</div>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-slate-850 border border-slate-800">
+          <div class="text-[10px] text-slate-400 uppercase font-mono tracking-wider">Sesiones Registradas</div>
+          <div class="flex items-baseline gap-1 mt-1">
+            <span id="kpiTotalRuns" class="text-2xl font-black font-mono text-sky-300">0</span>
+            <span class="text-xs font-mono text-slate-500">runs</span>
+          </div>
+          <div class="text-[10px] text-slate-500 font-mono mt-1">Entrenos validados</div>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-slate-850 border border-slate-800 col-span-2">
+          <div class="flex justify-between items-start">
+            <div class="text-[10px] text-slate-400 uppercase font-mono tracking-wider">Ratio de Carga ACWR (Tim Gabbett)</div>
+            <span id="kpiAcwrBadge" class="text-[10px] font-mono px-2 py-0.5 rounded-full border bg-slate-900 font-semibold">Pizarra Limpia</span>
+          </div>
+          <div class="flex items-baseline gap-3 mt-1">
+            <span id="kpiAcwrVal" class="text-2xl font-black font-mono text-emerald-300">0.00</span>
+            <div class="text-xs font-mono text-slate-400">
+              Aguda: <span id="kpiAcuteLoad" class="text-slate-200 font-semibold">0 AU</span> | 
+              Crónica: <span id="kpiChronicLoad" class="text-slate-200 font-semibold">0 AU</span>
+            </div>
+          </div>
+          <div class="text-[10px] text-slate-500 font-mono mt-1">Rango seguro de prevención: 0.8 a 1.3</div>
+        </div>
+      </div>
+
+      <!-- Gráfico Científico de Carga ACWR (Bajo Contraste) -->
+      <div class="p-4 md:p-5 rounded-2xl bg-slate-850 border border-slate-800 space-y-3">
+        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+          <div>
+            <h3 class="text-xs font-bold font-mono text-slate-200 flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+              CINÉTICA DE CARGA AGUDA vs. CRÓNICA (28 DÍAS)
+            </h3>
+            <p class="text-[11px] text-slate-400">Verde: Ratio ACWR. Azul: Carga de 7 días. Línea punteada ámbar: Umbral seguro (1.3).</p>
           </div>
         </div>
 
-        <div class="relative h-64 md:h-80 w-full">
+        <div class="relative h-60 w-full">
           <canvas id="acwrChartCanvas"></canvas>
         </div>
       </div>
 
-      <!-- Historial Reciente de Entrenamientos -->
-      <div class="p-4 md:p-5 rounded-2xl bg-slate-900/80 border border-white/[0.06] shadow-xl overflow-hidden">
-        <div class="flex justify-between items-center mb-3">
-          <h3 class="text-sm font-bold font-mono text-white flex items-center gap-2">
-            <span>⏱️</span> ENTRENAMIENTOS RECIENTES (MÉTRICAS AJUSTADAS)
-          </h3>
-          <button onclick="switchTab('ingest')" class="text-xs font-mono text-lime-400 hover:text-lime-300 font-semibold underline">
-            + Nuevo Registro / Captura
+      <!-- Historial de Entrenamientos Recientes -->
+      <div class="p-4 rounded-2xl bg-slate-850 border border-slate-800 space-y-3">
+        <div class="flex justify-between items-center">
+          <h3 class="text-xs font-bold font-mono text-slate-200">HISTORIAL DE SESIONES RECIENTES</h3>
+          <button onclick="switchTab('log')" class="text-xs font-mono text-emerald-300 hover:text-emerald-200 underline">
+            + Añadir Sesión
           </button>
         </div>
 
         <div class="overflow-x-auto">
           <table class="w-full text-left border-collapse">
             <thead>
-              <tr class="border-b border-slate-800 text-[11px] font-mono text-slate-400 uppercase">
+              <tr class="border-b border-slate-800 text-[10px] font-mono text-slate-500 uppercase">
                 <th class="py-2 px-3">Fecha</th>
                 <th class="py-2 px-3">Distancia</th>
                 <th class="py-2 px-3">Tiempo</th>
-                <th class="py-2 px-3">Ritmo / GAP</th>
+                <th class="py-2 px-3">Ritmo</th>
                 <th class="py-2 px-3">FC Media</th>
-                <th class="py-2 px-3">Carga RPE</th>
-                <th class="py-2 px-3 text-right">Captura</th>
+                <th class="py-2 px-3">Esfuerzo RPE</th>
               </tr>
             </thead>
-            <tbody id="recentWorkoutsTableBody">
-              <!-- Inyectado por JS -->
-            </tbody>
+            <tbody id="recentWorkoutsTableBody"></tbody>
           </table>
         </div>
       </div>
@@ -237,661 +285,197 @@
     </section>
 
     <!-- ------------------------------------------------------------------- -->
-    <!-- TAB 2: INGESTA DE DATOS Y PANTALLAZOS DE SMARTWATCH -->
+    <!-- TAB 2: PLANIFICADOR DE MICROCICLO DINÁMICO (6 DÍAS) -->
     <!-- ------------------------------------------------------------------- -->
-    <section id="tab-ingest" class="tab-content hidden max-w-3xl mx-auto space-y-6">
-      <div class="p-5 md:p-6 rounded-2xl bg-slate-900/90 border border-white/[0.08] shadow-2xl space-y-6">
-        
+    <section id="tab-planner" class="tab-content hidden space-y-4">
+      <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
         <div>
-          <h2 class="text-base font-bold font-mono text-white flex items-center gap-2">
-            <span>⌚</span> INGESTA CIENTÍFICA & ESCÁNER DE PANTALLAZOS DE RELOJ
-          </h2>
-          <p class="text-xs text-slate-400 mt-1">Sube la foto/captura de pantalla de tu reloj (Garmin, Polar, Huawei, Apple, Coros, Samsung) o ingresa tus datos manualmente.</p>
+          <h2 class="text-sm font-bold font-mono text-slate-200">MICROCICLO SEMANAL DE 6 DÍAS (ENFOQUE SUB-18 / SUB-37)</h2>
+          <p class="text-xs text-slate-400 mt-0.5">Estructurado: 1 Fondo largo, 2 Calidades (Series 1000m pista & Umbral), 3 Rodajes aeróbicos, 1 Descanso.</p>
+        </div>
+      </div>
+
+      <div id="microcycleCardsContainer" class="space-y-3">
+        <!-- Inyectado dinámicamente -->
+      </div>
+    </section>
+
+    <!-- ------------------------------------------------------------------- -->
+    <!-- TAB 3: REGISTRO DE ENTRENAMIENTOS -->
+    <!-- ------------------------------------------------------------------- -->
+    <section id="tab-log" class="tab-content hidden max-w-xl mx-auto space-y-4">
+      <div class="p-5 rounded-2xl bg-slate-850 border border-slate-800 space-y-5">
+        <div>
+          <h2 class="text-sm font-bold font-mono text-slate-200">REGISTRAR NUEVA SESIÓN DE RUNNING</h2>
+          <p class="text-xs text-slate-400 mt-0.5">Al guardar, se sumará el kilometraje al calzado seleccionado y se recalculará tu carga ACWR.</p>
         </div>
 
-        <!-- Módulo de Carga / Escaneo de Captura de Reloj -->
-        <div class="p-4 rounded-xl bg-slate-950 border border-dashed border-slate-700 space-y-3">
-          <div class="flex justify-between items-center">
-            <span class="text-xs font-bold font-mono text-lime-400 flex items-center gap-1.5">
-              <span>📸</span> PROVEER PANTALLAZO DEL RELOJ (OPCIONAL)
-            </span>
-            <span class="text-[10px] font-mono text-slate-500">Auto-compresión en navegador</span>
-          </div>
-
-          <!-- Zona Drag & Drop -->
-          <div id="screenshotDropZone" class="border border-slate-800 rounded-xl p-5 text-center cursor-pointer hover:border-slate-600 transition bg-slate-900/40" onclick="document.getElementById('screenshotFileInput').click()">
-            <input type="file" id="screenshotFileInput" accept="image/*" class="hidden" />
-            <div class="flex flex-col items-center justify-center gap-1 text-slate-400">
-              <span class="text-2xl">📤</span>
-              <p class="text-xs font-mono font-semibold text-slate-300">Toca aquí o arrastra el pantallazo de tu reloj</p>
-              <p class="text-[10px] font-mono text-slate-500">Admite fotos directas de cámara o capturas de pantalla de la app del reloj</p>
-            </div>
-          </div>
-
-          <!-- Vista Previa de Captura -->
-          <div id="screenshotPreviewContainer" class="hidden flex items-center justify-between p-3 bg-slate-900 rounded-xl border border-slate-800">
-            <div class="flex items-center gap-3">
-              <img id="screenshotPreviewImg" src="" alt="Captura de reloj" class="w-16 h-16 object-cover rounded-lg border border-slate-700" />
-              <div>
-                <span class="text-xs font-bold font-mono text-white block">Pantallazo Adjunto</span>
-                <span class="text-[10px] font-mono text-lime-400">Optimizado para historial</span>
-              </div>
-            </div>
-            <div class="flex items-center gap-2">
-              <button type="button" id="btnAutoDetectScreenshot" class="px-2.5 py-1.5 bg-lime-500/20 text-lime-400 border border-lime-500/40 rounded-lg text-xs font-mono hover:bg-lime-500/30 transition">
-                ⚡ Auto-Detectar
-              </button>
-              <button type="button" id="btnRemoveScreenshot" class="p-1.5 text-slate-400 hover:text-red-400 text-xs font-mono transition">
-                ✕ Quitar
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Formulario Principal -->
-        <form id="smartwatchIngestForm" class="space-y-4">
-          
-          <!-- Selector de Ecosistema de Reloj -->
-          <div>
-            <label class="block text-xs font-mono text-slate-300 uppercase mb-1.5">Ecosistema / Marca de Reloj</label>
-            <select id="ingestBrandPreset" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono text-lime-400 focus:outline-none focus:border-lime-400">
-              <option value="Garmin (Forerunner / Fenix)">Garmin Connect (Forerunner / Fenix / Epix)</option>
-              <option value="Polar (Vantage / Pacer)">Polar Flow (Vantage V3 / Pacer Pro)</option>
-              <option value="Huawei Health (GT / Runner)">Huawei Health (Watch GT 4 / Watch Runner)</option>
-              <option value="Coros (Pace / Apex)">Coros Training Hub (Pace 3 / Apex 2)</option>
-              <option value="Samsung (Galaxy Watch)">Samsung Health (Galaxy Watch Ultra)</option>
-              <option value="Apple Watch Ultra">Apple Watch (Workouts App / Strava)</option>
-            </select>
-          </div>
-
-          <!-- Fila Fecha, Distancia y Tiempo -->
+        <form id="workoutLogForm" class="space-y-4 font-mono text-xs">
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label class="block text-xs font-mono text-slate-300 uppercase mb-1">Fecha</label>
-              <input type="date" id="ingestDate" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-cyan-400" />
+              <label class="block text-slate-400 uppercase text-[10px] mb-1">Fecha</label>
+              <input type="date" id="workoutDate" required class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-400" />
             </div>
             <div>
-              <label class="block text-xs font-mono text-slate-300 uppercase mb-1">Distancia (km) *</label>
-              <input type="number" step="0.01" id="ingestDistance" required placeholder="Ej: 10.50" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-lime-400 font-bold" />
+              <label class="block text-slate-400 uppercase text-[10px] mb-1">Distancia (km) *</label>
+              <input type="number" step="0.01" id="workoutDistance" required placeholder="Ej: 10.0" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 font-bold focus:outline-none focus:border-emerald-400" />
             </div>
             <div>
-              <label class="block text-xs font-mono text-slate-300 uppercase mb-1">Tiempo (hh:mm:ss o mm:ss) *</label>
-              <input type="text" id="ingestDuration" required placeholder="Ej: 52:30" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-lime-400 font-bold" />
+              <label class="block text-slate-400 uppercase text-[10px] mb-1">Tiempo (hh:mm:ss) *</label>
+              <input type="text" id="workoutDuration" required placeholder="Ej: 48:30" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 font-bold focus:outline-none focus:border-emerald-400" />
             </div>
           </div>
 
-          <!-- Métricas Fisiológicas y Ambientales -->
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div>
-              <label class="block text-[11px] font-mono text-slate-300 uppercase mb-1">Desnivel (+m)</label>
-              <input type="number" id="ingestElevation" placeholder="Ej: 75" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-cyan-400" />
-            </div>
-            <div>
-              <label class="block text-[11px] font-mono text-slate-300 uppercase mb-1">Temp (°C)</label>
-              <input type="number" id="ingestTemp" placeholder="Ej: 24" value="22" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-cyan-400" />
-            </div>
-            <div>
-              <label class="block text-[11px] font-mono text-slate-300 uppercase mb-1">Humedad (%)</label>
-              <input type="number" id="ingestHumidity" placeholder="Ej: 65" value="60" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-cyan-400" />
-            </div>
-            <div>
-              <label class="block text-[11px] font-mono text-slate-300 uppercase mb-1">Cadencia (spm)</label>
-              <input type="number" id="ingestCadence" placeholder="Ej: 178" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-cyan-400" />
-            </div>
-          </div>
-
-          <!-- Frecuencia Cardíaca y VO2max -->
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div>
-              <label class="block text-xs font-mono text-slate-300 uppercase mb-1">FC Media (bpm)</label>
-              <input type="number" id="ingestAvgHr" placeholder="Ej: 152" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-cyan-400" />
-            </div>
-            <div>
-              <label class="block text-xs font-mono text-slate-300 uppercase mb-1">FC Máxima (bpm)</label>
-              <input type="number" id="ingestMaxHr" placeholder="Ej: 176" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-cyan-400" />
-            </div>
-            <div>
-              <label class="block text-xs font-mono text-slate-300 uppercase mb-1">VO2 Máx Reloj</label>
-              <input type="number" step="0.1" id="ingestVo2" placeholder="Ej: 52.4" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-cyan-400" />
-            </div>
-          </div>
-
-          <!-- Selección de Zapatillas y RPE -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label class="block text-xs font-mono text-slate-300 uppercase mb-1">Zapatilla Utilizada</label>
-              <select id="ingestShoeSelect" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-cyan-400">
+              <label class="block text-slate-400 uppercase text-[10px] mb-1">FC Media (bpm)</label>
+              <input type="number" id="workoutAvgHr" placeholder="Ej: 154" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-sky-400" />
+            </div>
+            <div>
+              <label class="block text-slate-400 uppercase text-[10px] mb-1">FC Máxima (bpm)</label>
+              <input type="number" id="workoutMaxHr" placeholder="Ej: 178" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-sky-400" />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-slate-400 uppercase text-[10px] mb-1">Calzado Utilizado</label>
+              <select id="workoutShoeSelect" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-400">
                 <!-- Inyectado por JS -->
               </select>
             </div>
             <div>
-              <label class="block text-xs font-mono text-slate-300 uppercase mb-1">Esfuerzo RPE (Borg 1-10)</label>
-              <select id="ingestRpe" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono text-lime-400 focus:outline-none focus:border-lime-400 font-bold">
-                <option value="3">3 - Muy suave (Recuperación activa Z1)</option>
-                <option value="4">4 - Suave / Conversacional (Base aeróbica Z2)</option>
-                <option value="5">5 - Moderado (Rodaje cómodo Z2)</option>
-                <option value="6" selected>6 - Algo duro (Tempo aeróbico Z3)</option>
-                <option value="7">7 - Duro (Ritmo Umbral de Lactato Z4)</option>
-                <option value="8">8 - Muy duro (Series largas VO2máx)</option>
-                <option value="9">9 - Extenuante (Series cortas a fondo)</option>
-                <option value="10">10 - Esfuerzo Máximo / Competición</option>
+              <label class="block text-slate-400 uppercase text-[10px] mb-1">Esfuerzo RPE (Borg 1-10)</label>
+              <select id="workoutRpe" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-emerald-300 font-bold focus:outline-none focus:border-emerald-400">
+                <option value="3">3 - Muy suave (Regenerativo Z1)</option>
+                <option value="4">4 - Suave / Conversacional (Base Z2)</option>
+                <option value="5" selected>5 - Moderado (Rodaje cómodo Z2)</option>
+                <option value="6">6 - Algo duro (Tempo Z3)</option>
+                <option value="7">7 - Duro (Ritmo Umbral Z4)</option>
+                <option value="8">8 - Muy duro (Series largas 1000m VAM)</option>
+                <option value="9">9 - Extenuante (Esfuerzo máximo)</option>
+                <option value="10">10 - Test / Competición a fondo</option>
               </select>
             </div>
           </div>
 
-          <!-- Notas y Sensaciones Fisiológicas -->
           <div>
-            <label class="block text-xs font-mono text-slate-300 uppercase mb-1">Notas Fisiológicas (Periostitis, sensaciones)</label>
-            <textarea id="ingestNotes" rows="2" placeholder="Ej: Sin molestias en sóleo ni periostio. Buenas sensaciones aeróbicas." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-cyan-400"></textarea>
+            <label class="block text-slate-400 uppercase text-[10px] mb-1">Sensaciones & Notas Fisiológicas</label>
+            <textarea id="workoutNotes" rows="2" placeholder="Ej: Series en pista completadas con buena cadencia. Piernas ligeras sin molestias en periostio." class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-emerald-400"></textarea>
           </div>
 
-          <!-- Botón de Envío -->
-          <button type="submit" class="w-full py-3.5 bg-lime-500 hover:bg-lime-400 text-slate-950 font-mono font-black text-xs uppercase tracking-wider rounded-xl transition shadow-[0_0_20px_rgba(163,230,53,0.3)] flex items-center justify-center gap-2 cursor-pointer">
-            <span>💾</span> GUARDAR SESIÓN Y SINCRONIZAR ACWR / CALZADO
+          <button type="submit" class="w-full py-3 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 rounded-xl font-bold uppercase tracking-wider transition">
+            Guardar Entrenamiento & Actualizar Plan
           </button>
         </form>
-
       </div>
     </section>
 
     <!-- ------------------------------------------------------------------- -->
-    <!-- TAB 3: MOTOR CALCULADOR CIENTÍFICO (CORE JS) -->
+    <!-- TAB 4: MOTOR CIENTÍFICO (ZONAS KARVONEN & DANIELS) -->
     <!-- ------------------------------------------------------------------- -->
-    <section id="tab-scientific" class="tab-content hidden space-y-6">
-      
-      <div class="flex justify-between items-center">
-        <div>
-          <h2 class="text-base font-bold font-mono text-white flex items-center gap-2">
-            <span>🔬</span> MOTOR FISIOLÓGICO Y MATEMÁTICO INTEGRAL
-          </h2>
-          <p class="text-xs text-slate-400">Algoritmos validados de Martti Karvonen, Jack Daniels, Alberto Minetti y Magnus-Tetens.</p>
-        </div>
+    <section id="tab-scientific" class="tab-content hidden space-y-5">
+      <div>
+        <h2 class="text-sm font-bold font-mono text-slate-200">FISIOLOGÍA APLICADA: KARVONEN & MODELO JACK DANIELS</h2>
+        <p class="text-xs text-slate-400 mt-0.5">Calculado con FC Reposo = 46 bpm, FC Máx = 193 bpm y VDOT Dinámico actual.</p>
       </div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-        <!-- Zonas Cardíacas Karvonen -->
-        <div class="p-5 rounded-2xl bg-slate-900/80 border border-white/[0.06] space-y-4">
-          <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-            <div>
-              <h3 class="text-sm font-bold font-mono text-lime-400">1. ZONAS KARVONEN (FC RESERVA)</h3>
-              <p class="text-[11px] text-slate-400">Target = FC Rep + (% * [FC Máx - FC Rep])</p>
-            </div>
-            <span class="text-xs font-mono text-slate-400">5 ZONAS</span>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <!-- Zonas Karvonen -->
+        <div class="p-4 rounded-2xl bg-slate-850 border border-slate-800 space-y-3">
+          <div class="border-b border-slate-800 pb-2">
+            <h3 class="text-xs font-bold font-mono text-emerald-300">ZONAS DE FRECUENCIA CARDÍACA (KARVONEN)</h3>
+            <p class="text-[11px] text-slate-400">FC Reserva = 193 - 46 = 147 bpm</p>
           </div>
-          <div id="karvonenZonesList" class="space-y-2.5">
-            <!-- Inyectado por JS -->
-          </div>
+          <div id="karvonenZonesList" class="space-y-2"></div>
         </div>
 
-        <!-- VDOT Jack Daniels -->
-        <div class="p-5 rounded-2xl bg-slate-900/80 border border-white/[0.06] space-y-4">
-          <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-            <div>
-              <h3 class="text-sm font-bold font-mono text-cyan-400">2. VDOT DE JACK DANIELS & RITMOS</h3>
-              <p class="text-[11px] text-slate-400">Potencia aeróbica y velocidad de economía de carrera</p>
-            </div>
-            <div class="text-right">
-              <span id="currentVdotDisplay" class="text-xl font-black font-mono text-cyan-400">--</span>
-              <span class="text-[10px] text-slate-500 font-mono block">VDOT ACTUAL</span>
-            </div>
+        <!-- Paces Daniels -->
+        <div class="p-4 rounded-2xl bg-slate-850 border border-slate-800 space-y-3">
+          <div class="border-b border-slate-800 pb-2">
+            <h3 class="text-xs font-bold font-mono text-sky-300">RITMOS DE ENTRENAMIENTO (JACK DANIELS)</h3>
+            <p class="text-[11px] text-slate-400">Calibrados con 5K en 19:26 y 1000m en 3:30</p>
           </div>
 
-          <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs font-mono">
-            <div class="p-3 bg-slate-950 rounded-xl border border-slate-800">
-              <div class="text-[10px] text-slate-400 uppercase">Easy / Rodaje (E)</div>
-              <div id="paceEasy" class="text-sm font-bold text-lime-400 mt-1">--:-- /km</div>
-              <div class="text-[10px] text-slate-500 mt-0.5">70% VDOT</div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-mono">
+            <div class="p-3 rounded-xl bg-slate-900 border border-slate-800">
+              <span class="text-[10px] text-slate-500 uppercase block">Easy / Rodajes Z2</span>
+              <span id="paceEasyVal" class="text-sm font-bold text-emerald-300 mt-0.5 block">--:-- /km</span>
+              <span class="text-[10px] text-slate-500">70% VDOT (Base aeróbica)</span>
             </div>
-            <div class="p-3 bg-slate-950 rounded-xl border border-slate-800">
-              <div class="text-[10px] text-slate-400 uppercase">Maratón (M)</div>
-              <div id="paceMarathon" class="text-sm font-bold text-sky-400 mt-1">--:-- /km</div>
-              <div class="text-[10px] text-slate-500 mt-0.5">80% VDOT</div>
+            <div class="p-3 rounded-xl bg-slate-900 border border-slate-800">
+              <span class="text-[10px] text-slate-500 uppercase block">Maratón (M)</span>
+              <span id="paceMarathonVal" class="text-sm font-bold text-sky-300 mt-0.5 block">--:-- /km</span>
+              <span class="text-[10px] text-slate-500">80% VDOT (Fondos largos)</span>
             </div>
-            <div class="p-3 bg-slate-950 rounded-xl border border-slate-800">
-              <div class="text-[10px] text-slate-400 uppercase">Umbral / Tempo (T)</div>
-              <div id="paceThreshold" class="text-sm font-bold text-amber-400 mt-1">--:-- /km</div>
-              <div class="text-[10px] text-slate-500 mt-0.5">88% VDOT</div>
+            <div class="p-3 rounded-xl bg-slate-900 border border-slate-800">
+              <span class="text-[10px] text-slate-500 uppercase block">Umbral Lactato (T)</span>
+              <span id="paceThresholdVal" class="text-sm font-bold text-amber-300 mt-0.5 block">--:-- /km</span>
+              <span class="text-[10px] text-slate-500">88% VDOT (Series 2000m)</span>
             </div>
-            <div class="p-3 bg-slate-950 rounded-xl border border-slate-800">
-              <div class="text-[10px] text-slate-400 uppercase">Intervalos / VO2 (I)</div>
-              <div id="paceInterval" class="text-sm font-bold text-orange-400 mt-1">--:-- /km</div>
-              <div class="text-[10px] text-slate-500 mt-0.5">97.5% VDOT</div>
+            <div class="p-3 rounded-xl bg-slate-900 border border-slate-800">
+              <span class="text-[10px] text-slate-500 uppercase block">Interval / VAM (I)</span>
+              <span id="paceIntervalVal" class="text-sm font-bold text-rose-300 mt-0.5 block">--:-- /km</span>
+              <span class="text-[10px] text-slate-500">97.5% VDOT (Series 1000m pista)</span>
             </div>
-            <div class="p-3 bg-slate-950 rounded-xl border border-slate-800">
-              <div class="text-[10px] text-slate-400 uppercase">Repetición / Pista (R)</div>
-              <div id="paceRepetition" class="text-sm font-bold text-red-400 mt-1">--:-- /km</div>
-              <div class="text-[10px] text-slate-500 mt-0.5">107% VDOT</div>
+            <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 sm:col-span-2">
+              <span class="text-[10px] text-slate-500 uppercase block">Repetition / Velocidad (R)</span>
+              <span id="paceRepetitionVal" class="text-sm font-bold text-slate-200 mt-0.5 block">--:-- /km</span>
+              <span class="text-[10px] text-slate-500">107% VDOT (Rectas técnicas y series de 200m/400m)</span>
             </div>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- Calculadora Interactiva: Minetti GAP y Clima -->
-      <div class="p-5 rounded-2xl bg-slate-900/80 border border-white/[0.06] shadow-xl">
-        <h3 class="text-sm font-bold font-mono text-white flex items-center gap-2 mb-3">
-          <span>⚡</span> CALCULADORA EN VIVO: GAP MINETTI (PENDIENTE) Y PENALIZACIÓN POR PUNTO DE ROCÍO
-        </h3>
-
-        <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-4">
-          <div>
-            <label class="block text-[10px] font-mono text-slate-400 uppercase mb-1">Distancia (km)</label>
-            <input type="number" id="gapDistInput" value="10" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs font-mono text-white" />
-          </div>
-          <div>
-            <label class="block text-[10px] font-mono text-slate-400 uppercase mb-1">Ritmo Real (mm:ss)</label>
-            <input type="text" id="gapPaceInput" value="5:30" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs font-mono text-white font-bold" />
-          </div>
-          <div>
-            <label class="block text-[10px] font-mono text-slate-400 uppercase mb-1">Desnivel (+m)</label>
-            <input type="number" id="gapElevInput" value="120" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs font-mono text-white" />
-          </div>
-          <div>
-            <label class="block text-[10px] font-mono text-slate-400 uppercase mb-1">Temp (°C)</label>
-            <input type="number" id="gapTempInput" value="28" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs font-mono text-white" />
-          </div>
-          <div>
-            <label class="block text-[10px] font-mono text-slate-400 uppercase mb-1">Humedad (%)</label>
-            <input type="number" id="gapHumInput" value="75" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs font-mono text-white" />
-          </div>
-        </div>
-
-        <button id="btnCalcInteractiveGap" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-lime-400 font-mono text-xs rounded-xl transition border border-lime-500/30 font-bold mb-4">
-          Ejecutar Modelo GAP & Magnus-Tetens
-        </button>
-
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 font-mono text-xs">
-          <div class="p-3 bg-slate-950 rounded-xl border border-slate-800">
-            <span class="text-slate-400 text-[10px] uppercase block">Ritmo Ajustado GAP (Equiv. Llano)</span>
-            <span id="gapOutputPace" class="text-lg font-bold text-lime-400">5:05 /km</span>
-          </div>
-          <div class="p-3 bg-slate-950 rounded-xl border border-slate-800">
-            <span class="text-slate-400 text-[10px] uppercase block">Punto de Rocío (Dew Point)</span>
-            <span id="weatherOutputDew" class="text-lg font-bold text-cyan-400">23.1°C</span>
-          </div>
-          <div class="p-3 bg-slate-950 rounded-xl border border-slate-800">
-            <span class="text-slate-400 text-[10px] uppercase block">Penalización Térmica</span>
-            <span id="weatherOutputPenalty" class="text-lg font-bold text-amber-400">+12 s/km (3.8%)</span>
           </div>
         </div>
       </div>
-
     </section>
 
     <!-- ------------------------------------------------------------------- -->
-    <!-- TAB 4: PLANIFICADOR DE ENTRENAMIENTOS ESPECÍFICOS -->
+    <!-- TAB 5: ROTACIÓN DE CALZADO -->
     <!-- ------------------------------------------------------------------- -->
-    <section id="tab-planner" class="tab-content hidden space-y-5">
-      <div class="flex flex-col md:flex-row justify-between md:items-center gap-2">
-        <div>
-          <h2 id="planTitle" class="text-base font-bold font-mono text-white flex items-center gap-2">
-            <span>📅</span> PLANIFICADOR DE MICROCICLO SEMANAL
-          </h2>
-          <p id="planSubtitle" class="text-xs text-slate-400 mt-0.5">Microciclo estructurado por capacidad fisiológica</p>
-        </div>
+    <section id="tab-shoes" class="tab-content hidden space-y-4">
+      <div>
+        <h2 class="text-sm font-bold font-mono text-slate-200">ROTACIÓN ACTIVA DE CALZADO (DYKEMBEL VARGAS)</h2>
+        <p class="text-xs text-slate-400 mt-0.5">Los kilómetros se acumulan de forma automática al registrar cada sesión.</p>
       </div>
 
-      <div id="microcycleContainer" class="space-y-3">
+      <div id="shoesListContainer" class="grid grid-cols-1 md:grid-cols-3 gap-3">
         <!-- Inyectado por JS -->
       </div>
-    </section>
-
-    <!-- ------------------------------------------------------------------- -->
-    <!-- TAB 5: LABORATORIO DE NUTRICIÓN Y RECUPERACIÓN -->
-    <!-- ------------------------------------------------------------------- -->
-    <section id="tab-nutrition" class="tab-content hidden space-y-6">
-      
-      <div>
-        <h2 class="text-base font-bold font-mono text-white flex items-center gap-2">
-          <span>🧪</span> LABORATORIO DE NUTRICIÓN Y REPOSICIÓN ELECTROLÍTICA
-        </h2>
-        <p class="text-xs text-slate-400 mt-1">Cálculo individual de tasa de sudoración y ventana metabólica post-entreno.</p>
-      </div>
-
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        <!-- Test de Sudoración -->
-        <div class="p-5 rounded-2xl bg-slate-900/80 border border-white/[0.06] shadow-xl space-y-4">
-          <div class="border-b border-slate-800 pb-2">
-            <h3 class="text-sm font-bold font-mono text-lime-400">TEST CIENTÍFICO DE SUDORACIÓN</h3>
-            <p class="text-[11px] text-slate-400">Determina tu déficit de volumen plasmático y reposición de sodio (Na+).</p>
-          </div>
-
-          <div class="grid grid-cols-2 gap-3 text-xs font-mono">
-            <div>
-              <label class="block text-slate-400 uppercase text-[10px] mb-1">Peso Pre-Entreno (kg)</label>
-              <input type="number" step="0.1" id="sweatPreWeight" value="70.0" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-white font-bold" />
-            </div>
-            <div>
-              <label class="block text-slate-400 uppercase text-[10px] mb-1">Peso Post-Entreno (kg)</label>
-              <input type="number" step="0.1" id="sweatPostWeight" value="69.2" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-white font-bold" />
-            </div>
-            <div>
-              <label class="block text-slate-400 uppercase text-[10px] mb-1">Líquidos Bebidos (ml)</label>
-              <input type="number" id="sweatFluidMl" value="400" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-white" />
-            </div>
-            <div>
-              <label class="block text-slate-400 uppercase text-[10px] mb-1">Duración Sesión (min)</label>
-              <input type="number" id="sweatDurationMin" value="60" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-white" />
-            </div>
-          </div>
-
-          <button id="btnCalculateSweat" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-lime-400 font-mono text-xs rounded-xl font-bold transition border border-lime-500/30 cursor-pointer">
-            Calcular Tasa de Sudoración
-          </button>
-
-          <div id="sweatResultsBox" class="hidden p-4 rounded-xl bg-slate-950 border border-slate-800 font-mono text-xs space-y-2">
-            <div class="flex justify-between">
-              <span class="text-slate-400">Tasa de Sudoración Horaria:</span>
-              <span id="sweatRateResult" class="text-lime-400 font-bold">1.20 L/h</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-slate-400">Pérdida Total de Sudor:</span>
-              <span id="sweatTotalLostResult" class="text-white font-bold">1.20 L</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-slate-400">Deshidratación Corporal:</span>
-              <span id="sweatDehydrationResult" class="text-amber-400 font-bold">1.1%</span>
-            </div>
-            <div class="pt-2 border-t border-slate-800/80 flex justify-between">
-              <span class="text-slate-400">Líquido a reponer (150%):</span>
-              <span id="sweatRehydrationResult" class="text-cyan-400 font-bold">1200 ml</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-slate-400">Sodio Estimado a Reponer:</span>
-              <span id="sweatSodiumResult" class="text-cyan-400 font-bold">1020 mg Na+</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Ventana Metabólica -->
-        <div class="p-5 rounded-2xl bg-slate-900/80 border border-white/[0.06] shadow-xl space-y-4">
-          <div class="border-b border-slate-800 pb-2">
-            <h3 class="text-sm font-bold font-mono text-cyan-400">VENTANA METABÓLICA & RESÍNTESIS</h3>
-            <p class="text-[11px] text-slate-400">Optimización de carbohidratos y proteínas en los primeros 45 min post-running.</p>
-          </div>
-
-          <div class="grid grid-cols-3 gap-3 text-xs font-mono">
-            <div>
-              <label class="block text-slate-400 uppercase text-[10px] mb-1">Peso (kg)</label>
-              <input type="number" step="0.5" id="metaWeight" value="68.0" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-white font-bold" />
-            </div>
-            <div>
-              <label class="block text-slate-400 uppercase text-[10px] mb-1">Duración (min)</label>
-              <input type="number" id="metaDuration" value="75" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-white" />
-            </div>
-            <div>
-              <label class="block text-slate-400 uppercase text-[10px] mb-1">Intensidad</label>
-              <select id="metaIntensity" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-white text-xs">
-                <option value="low">Baja (Z1-Z2)</option>
-                <option value="medium" selected>Media (Z3)</option>
-                <option value="high">Alta (Z4-Z5)</option>
-              </select>
-            </div>
-          </div>
-
-          <button id="btnCalculateWindow" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-cyan-400 font-mono text-xs rounded-xl font-bold transition border border-cyan-500/30 cursor-pointer">
-            Calcular Macronutrientes Óptimos
-          </button>
-
-          <div id="metaResultsBox" class="hidden p-4 rounded-xl bg-slate-950 border border-slate-800 font-mono text-xs space-y-2">
-            <div class="grid grid-cols-3 gap-2 text-center py-1">
-              <div class="p-2 bg-slate-900 rounded-lg border border-slate-800">
-                <span class="text-[10px] text-slate-400 block">Carbohidratos</span>
-                <span id="metaChoResult" class="text-base font-bold text-lime-400">68 g</span>
-              </div>
-              <div class="p-2 bg-slate-900 rounded-lg border border-slate-800">
-                <span class="text-[10px] text-slate-400 block">Proteínas</span>
-                <span id="metaProResult" class="text-base font-bold text-cyan-400">24 g</span>
-              </div>
-              <div class="p-2 bg-slate-900 rounded-lg border border-slate-800">
-                <span class="text-[10px] text-slate-400 block">Ratio CHO:PRO</span>
-                <span id="metaRatioResult" class="text-base font-bold text-white">3:1</span>
-              </div>
-            </div>
-            <div class="text-[11px] text-slate-400 pt-1">
-              Energía Total: <span id="metaKcalResult" class="text-white font-bold">368 kcal</span>
-            </div>
-            <div class="pt-2 border-t border-slate-800">
-              <span class="text-[10px] text-slate-400 uppercase font-bold block mb-1">Protocolos de Alimentos Rápidos:</span>
-              <ul id="metaSuggestionsList" class="text-[11px] text-slate-300 space-y-1 list-disc list-inside"></ul>
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-    </section>
-
-    <!-- ------------------------------------------------------------------- -->
-    <!-- TAB 6: GESTOR DE ROTACIÓN DE ZAPATILLAS -->
-    <!-- ------------------------------------------------------------------- -->
-    <section id="tab-shoes" class="tab-content hidden space-y-6">
-      
-      <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
-        <div>
-          <h2 class="text-base font-bold font-mono text-white flex items-center gap-2">
-            <span>👟</span> GESTOR DE ROTACIÓN Y DESGASTE DE CALZADO
-          </h2>
-          <p class="text-xs text-slate-400 mt-0.5">Control de vida útil del compuesto de espuma (PEBAX / EVA / TPU) y placas de fibra.</p>
-        </div>
-        <button id="btnOpenAddShoeModal" class="px-4 py-2 bg-lime-500 hover:bg-lime-400 text-slate-950 font-mono text-xs font-bold rounded-xl transition shadow-[0_0_15px_rgba(163,230,53,0.3)] self-start sm:self-auto cursor-pointer">
-          + Agregar Zapatilla
-        </button>
-      </div>
-
-      <div id="shoesListContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <!-- Inyectado dinámicamente -->
-      </div>
-
     </section>
 
   </main>
 
   <!-- ===================================================================== -->
-  <!-- BARRA DE NAVEGACIÓN INFERIOR (MOBILE FIRST - MANEJO A UNA MANO) -->
+  <!-- BARRA DE NAVEGACIÓN INFERIOR (MOBILE FIRST) -->
   <!-- ===================================================================== -->
-  <nav class="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-slate-950/95 backdrop-blur-lg border-t border-white/[0.08] px-2 py-2">
-    <div class="grid grid-cols-6 gap-1">
-      <button data-tab="dashboard" class="nav-btn flex flex-col items-center justify-center py-1 text-lime-400">
+  <nav class="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-slate-900/95 backdrop-blur-lg border-t border-slate-800 px-2 py-2">
+    <div class="grid grid-cols-5 gap-1">
+      <button data-tab="dashboard" class="nav-btn flex flex-col items-center justify-center py-1 text-emerald-300">
         <span class="text-base">📊</span>
-        <span class="text-[9px] font-mono mt-0.5">ACWR</span>
-      </button>
-      <button data-tab="ingest" class="nav-btn flex flex-col items-center justify-center py-1 text-slate-400">
-        <span class="text-base">⌚</span>
-        <span class="text-[9px] font-mono mt-0.5">Reloj</span>
-      </button>
-      <button data-tab="scientific" class="nav-btn flex flex-col items-center justify-center py-1 text-slate-400">
-        <span class="text-base">🔬</span>
-        <span class="text-[9px] font-mono mt-0.5">Motor</span>
+        <span class="text-[9px] font-mono mt-0.5">Progreso</span>
       </button>
       <button data-tab="planner" class="nav-btn flex flex-col items-center justify-center py-1 text-slate-400">
         <span class="text-base">📅</span>
-        <span class="text-[9px] font-mono mt-0.5">Plan</span>
+        <span class="text-[9px] font-mono mt-0.5">Plan 6D</span>
       </button>
-      <button data-tab="nutrition" class="nav-btn flex flex-col items-center justify-center py-1 text-slate-400">
-        <span class="text-base">🧪</span>
-        <span class="text-[9px] font-mono mt-0.5">Lab</span>
+      <button data-tab="log" class="nav-btn flex flex-col items-center justify-center py-1 text-slate-400">
+        <span class="text-base">✍️</span>
+        <span class="text-[9px] font-mono mt-0.5">Registrar</span>
+      </button>
+      <button data-tab="scientific" class="nav-btn flex flex-col items-center justify-center py-1 text-slate-400">
+        <span class="text-base">🔬</span>
+        <span class="text-[9px] font-mono mt-0.5">Zonas</span>
       </button>
       <button data-tab="shoes" class="nav-btn flex flex-col items-center justify-center py-1 text-slate-400">
         <span class="text-base">👟</span>
-        <span class="text-[9px] font-mono mt-0.5">Tenis</span>
+        <span class="text-[9px] font-mono mt-0.5">Zapatillas</span>
       </button>
     </div>
   </nav>
 
-  <!-- ===================================================================== -->
-  <!-- MODAL DE CREACIÓN DE PERFIL Y ASIGNACIÓN DE PIN (ONBOARDING) -->
-  <!-- ===================================================================== -->
-  <div id="createProfileModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-700 max-w-md w-full rounded-2xl p-6 shadow-2xl space-y-4">
-      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-        <h3 id="createProfileModalTitle" class="text-sm font-bold font-mono text-lime-400">👋 BIENVENIDO: CREA TU PERFIL DE ATLETA</h3>
-        <button id="btnCancelCreateProfile" class="text-slate-400 hover:text-white font-mono text-sm hidden">✕</button>
-      </div>
+  <!-- Contenedor de Notificaciones Toast Flotantes -->
+  <div id="toastContainer" class="fixed top-14 right-4 z-50 space-y-2 pointer-events-none"></div>
 
-      <form id="createProfileForm" class="space-y-3 font-mono text-xs">
-        <div>
-          <label class="block text-slate-400 uppercase text-[10px] mb-1">Nombre Completo o Apodo *</label>
-          <input type="text" id="newProfName" required placeholder="Ej: Diego Dyke / Corredor Pro" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white font-bold" />
-        </div>
-
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-slate-400 uppercase text-[10px] mb-1">Enfoque / Objetivo</label>
-            <select id="newProfGoal" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white">
-              <option value="progression" selected>Progresión (Sub-60 10K / Anti-periostitis)</option>
-              <option value="elite">Élite (Sub-38 10K / 5K 18:00)</option>
-              <option value="marathon">Fondo & Maratón (Sub-3h30)</option>
-              <option value="initiation">Iniciación & Salud</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-slate-400 uppercase text-[10px] mb-1">Peso Corporal (kg)</label>
-            <input type="number" step="0.1" id="newProfWeight" value="70.0" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white" />
-          </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-slate-400 uppercase text-[10px] mb-1">FC Reposo (bpm)</label>
-            <input type="number" id="newProfHrRest" value="56" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white" />
-          </div>
-          <div>
-            <label class="block text-slate-400 uppercase text-[10px] mb-1">FC Máxima (bpm)</label>
-            <input type="number" id="newProfHrMax" value="190" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white" />
-          </div>
-        </div>
-
-        <div>
-          <label class="block text-slate-400 uppercase text-[10px] mb-1">Marca o Tiempo 10K Reciente (hh:mm:ss o mm:ss) - Opcional</label>
-          <input type="text" id="newProfRecent10k" placeholder="Ej: 59:30 (Calculará tu VDOT)" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white" />
-        </div>
-
-        <!-- Asignación de PIN de 4 Dígitos -->
-        <div class="p-3 bg-slate-950 rounded-xl border border-lime-500/30 space-y-2">
-          <div class="text-[11px] font-bold text-lime-400 uppercase">Establece tu PIN de 4 Dígitos (Acceso y Edición)</div>
-          <p class="text-[10px] text-slate-400">Este código protegerá tus datos. Se te solicitará cuando desees registrar o editar entrenamientos.</p>
-          
-          <div class="grid grid-cols-2 gap-3 pt-1">
-            <div>
-              <label class="block text-slate-400 uppercase text-[10px] mb-1">Código PIN (4 dígitos) *</label>
-              <input type="password" maxlength="4" id="newProfPin" required placeholder="••••" class="w-full bg-slate-900 border border-slate-700 text-center tracking-[0.5em] text-lg font-bold text-lime-400 rounded-xl p-2 focus:border-lime-400" />
-            </div>
-            <div>
-              <label class="block text-slate-400 uppercase text-[10px] mb-1">Confirmar PIN *</label>
-              <input type="password" maxlength="4" id="newProfPinConfirm" required placeholder="••••" class="w-full bg-slate-900 border border-slate-700 text-center tracking-[0.5em] text-lg font-bold text-lime-400 rounded-xl p-2 focus:border-lime-400" />
-            </div>
-          </div>
-        </div>
-
-        <button type="submit" class="w-full py-3.5 bg-lime-500 hover:bg-lime-400 text-slate-950 font-black uppercase tracking-wider rounded-xl transition shadow-[0_0_15px_rgba(163,230,53,0.3)] mt-2">
-          GUARDAR PERFIL Y COMENZAR
-        </button>
-      </form>
-    </div>
-  </div>
-
-  <!-- ===================================================================== -->
-  <!-- MODAL DE AUTENTICACIÓN POR PIN (4 DÍGITOS) -->
-  <!-- ===================================================================== -->
-  <div id="pinAuthModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-700 max-w-xs w-full rounded-2xl p-6 text-center shadow-2xl space-y-4">
-      <div class="w-12 h-12 rounded-full bg-slate-950 border border-lime-400/50 flex items-center justify-center mx-auto text-xl">
-        🔐
-      </div>
-      <div>
-        <h3 class="text-sm font-bold font-mono text-white">AUTENTICACIÓN REQUERIDA</h3>
-        <p class="text-xs text-slate-400 mt-1">Ingresa el PIN de 4 dígitos del perfil para habilitar permisos de edición (CRUD).</p>
-      </div>
-
-      <input type="password" maxlength="4" id="pinInputElement" placeholder="••••" class="w-32 mx-auto text-center tracking-[1em] text-2xl font-mono bg-slate-950 border border-slate-700 text-lime-400 rounded-xl py-2 focus:outline-none focus:border-lime-400" />
-
-      <div class="flex gap-2">
-        <button id="btnCancelPin" class="flex-1 py-2 rounded-xl bg-slate-800 text-slate-300 font-mono text-xs hover:bg-slate-700 transition">
-          Cancelar
-        </button>
-        <button id="btnSubmitPin" class="flex-1 py-2 rounded-xl bg-lime-500 text-slate-950 font-mono text-xs font-bold hover:bg-lime-400 transition">
-          Verificar
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ===================================================================== -->
-  <!-- MODAL VISOR DE CAPTURA DE RELOJ -->
-  <!-- ===================================================================== -->
-  <div id="viewScreenshotModal" class="hidden fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-700 max-w-lg w-full rounded-2xl p-4 shadow-2xl space-y-3">
-      <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-        <div>
-          <h3 class="text-xs font-bold font-mono text-white">📸 CAPTURA DE SMARTWATCH VALIDADA</h3>
-          <p id="viewScreenshotModalDetails" class="text-[11px] font-mono text-slate-400"></p>
-        </div>
-        <button id="btnCloseViewScreenshot" class="text-slate-400 hover:text-white font-mono text-sm">✕</button>
-      </div>
-
-      <div class="bg-slate-950 rounded-xl overflow-hidden flex items-center justify-center max-h-[75vh]">
-        <img id="viewScreenshotModalImg" src="" alt="Captura Smartwatch" class="max-h-[70vh] w-auto object-contain" />
-      </div>
-    </div>
-  </div>
-
-  <!-- ===================================================================== -->
-  <!-- MODAL PARA AGREGAR NUEVA ZAPATILLA -->
-  <!-- ===================================================================== -->
-  <div id="addShoeModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-700 max-w-md w-full rounded-2xl p-6 shadow-2xl space-y-4">
-      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-        <h3 class="text-sm font-bold font-mono text-white">NUEVO PAR DE ZAPATILLAS</h3>
-        <button id="btnCloseShoeModal" class="text-slate-400 hover:text-white font-mono text-sm">✕</button>
-      </div>
-
-      <form id="addShoeForm" class="space-y-3 font-mono text-xs">
-        <div>
-          <label class="block text-slate-400 uppercase text-[10px] mb-1">Marca</label>
-          <input type="text" id="shoeBrand" required placeholder="Ej: Nike, Asics, Saucony, Brooks" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white" />
-        </div>
-        <div>
-          <label class="block text-slate-400 uppercase text-[10px] mb-1">Modelo</label>
-          <input type="text" id="shoeModel" required placeholder="Ej: Vaporfly 3, Novablast 4, Ghost 15" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white" />
-        </div>
-        <div>
-          <label class="block text-slate-400 uppercase text-[10px] mb-1">Tipo de Espuma / Placa</label>
-          <input type="text" id="shoeFoam" required placeholder="Ej: PEBAX + Placa Carbono / FF Blast+ / EVA" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white" />
-        </div>
-        <div>
-          <label class="block text-slate-400 uppercase text-[10px] mb-1">Uso Recomendado</label>
-          <select id="shoeUsage" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white">
-            <option value="Competición & Series">Competición & Series Rápidas</option>
-            <option value="Tempo / Umbral">Tempo / Umbral Lactato</option>
-            <option value="Rodaje Diario Z2">Rodaje Diario Z2</option>
-            <option value="Recuperación Z1">Recuperación Z1 / Periostitis Safe</option>
-          </select>
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-slate-400 uppercase text-[10px] mb-1">Vida Útil (km)</label>
-            <input type="number" id="shoeMaxKm" value="700" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white" />
-          </div>
-          <div>
-            <label class="block text-slate-400 uppercase text-[10px] mb-1">Km Iniciales</label>
-            <input type="number" step="0.1" id="shoeCurrentKm" value="0.0" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white" />
-          </div>
-        </div>
-
-        <button type="submit" class="w-full py-3 bg-lime-500 hover:bg-lime-400 text-slate-950 font-bold uppercase rounded-xl transition mt-2">
-          Guardar Calzado
-        </button>
-      </form>
-    </div>
-  </div>
-
-  <!-- Contenedor de Alertas Toast Flotantes -->
-  <div id="toastContainer" class="fixed top-16 right-4 z-50 space-y-2 pointer-events-none"></div>
-
-  <!-- Script Principal de la Aplicación -->
+  <!-- Script Principal -->
   <script src="app.js"></script>
 </body>
 </html>

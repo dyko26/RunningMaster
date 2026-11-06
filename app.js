@@ -1,151 +1,190 @@
 /**
  * ============================================================================
- * RUNPULSE PRO - MOTOR CIENTÍFICO Y CONTROLADOR CENTRAL (app.js)
+ * RUNPULSE PRO - ATLETISMO DE RUTA CIENTÍFICO (app.js)
  * ============================================================================
- * Arquitectura: Vanilla JavaScript ES6+, localStorage / IndexedDB, Chart.js.
- * Filosofía: Pizarra Limpia (Inicio estricto desde cero), Onboarding de Atleta
- * con asignación obligatoria de PIN de 4 dígitos, Ingesta con Capturas de Reloj
- * (OCR / Compresión Canvas), ACWR (Tim Gabbett), Karvonen, Jack Daniels VDOT,
- * Minetti GAP, Termorregulación Magnus-Tetens y Nutrición Deportiva.
+ * Sistema Personal y Exclusivo para: Dykembel Vargas (24 años, 52 kg, 1.64m)
+ * Objetivos a 1 Año: 5K Sub-18:00 (3:36/km) & 10K Sub-37:00 (3:42/km)
+ * Marcas Base: 1000m pista 3:22 (Reciente 3:30) | 5K PB 18:44 (Reciente 19:26)
+ * Diseño Visual: Modo oscuro relajante, bajo contraste, tipografía monoespaciada
+ * y acentos suaves en verde salvia y azul acero.
  * ============================================================================
  */
 
 // ============================================================================
-// 1. ESTADO GLOBAL DE LA APLICACIÓN
+// 1. ESTADO INICIAL HARDCODEADO Y CONFIGURACIÓN DEL ATLETA
 // ============================================================================
 
+const ATHLETE_PROFILE = {
+  name: 'Dykembel Vargas',
+  age: 24,
+  weight: 52.0,         // kg (peso de competición ligero)
+  height: 1.64,         // metros (IMC: 19.3)
+  hrRest: 46,           // bpm (Frecuencia basal en reposo matutino)
+  hrMax: 193,           // bpm (Frecuencia máxima observada en pista)
+  frequencyDaysPerWeek: 6,
+
+  // Marcas Oficiales e Históricas
+  records: {
+    track1000m: { pb: '3:22', recent: '3:30', paceRecentSec: 210, paceRecentStr: '3:30 /km' },
+    race5k: { pb: '18:44', pbPaceStr: '3:45 /km', recent: '19:26', recentPaceSec: 233, recentPaceStr: '3:53 /km' },
+    race10k: { pb: '42:36', pbNote: 'split oficial en carrera de 10.5K (~4:03/km)' },
+    race21k: { pb: '1:54:00' }
+  },
+
+  // Metas del Próximo Año
+  targets: {
+    target5k: { time: '17:59', paceSec: 215.8, paceStr: '3:36 /km', vdotNeeded: 56.6, label: '5K Sub-18:00' },
+    target10k: { time: '36:59', paceSec: 221.9, paceStr: '3:42 /km', vdotNeeded: 57.0, label: '10K Sub-37:00' }
+  },
+
+  // VDOT Calculado a partir de marcas recientes:
+  // 5K en 19:26 = 51.8 VDOT. Test 1000m en 3:30 = 52.0 VDOT equivalente.
+  baseVdot: 51.8,
+  currentDynamicVdot: 51.8
+};
+
+const DEFAULT_SHOES = [
+  {
+    id: 'asics-gt1000',
+    brand: 'Asics',
+    model: 'GT-1000 10',
+    usage: 'Soporte leve / Rodajes aeróbicos diarios Z2',
+    currentKm: 0.0,
+    maxKm: 800,
+    category: 'daily'
+  },
+  {
+    id: 'adidas-boston11',
+    brand: 'Adidas',
+    model: 'Adizero Boston 11',
+    usage: 'Mixtas / Series de velocidad / Ritmo Umbral (Lightstrike Pro)',
+    currentKm: 0.0,
+    maxKm: 600,
+    category: 'quality'
+  },
+  {
+    id: 'olympikus-corre2',
+    brand: 'Olympikus',
+    model: 'Corre 2',
+    usage: 'Ligeras / Fondos largos dominicales / Recuperación Z1',
+    currentKm: 0.0,
+    maxKm: 600,
+    category: 'longrun'
+  }
+];
+
 const STORAGE_KEYS = {
-  PROFILES: 'runpulse_profiles_v2',
-  WORKOUTS: 'runpulse_workouts_v2',
-  SHOES: 'runpulse_shoes_v2',
-  ACTIVE_PROFILE: 'runpulse_active_profile_v2'
+  WORKOUTS: 'runpulse_dykembel_workouts_v1',
+  SHOES: 'runpulse_dykembel_shoes_v1',
+  DYNAMIC_STATE: 'runpulse_dykembel_state_v1'
 };
 
 const AppState = {
-  currentProfileId: null,
-  isUnlocked: false,          // Bloqueado para edición por defecto hasta ingresar PIN
-  activeTab: 'dashboard',     // 'dashboard', 'ingest', 'scientific', 'planner', 'nutrition', 'shoes'
-  profiles: [],
-  workouts: [],               // Inicia 100% en cero (Pizarra en blanco)
-  shoes: [],                  // Inicia 100% en cero
-  currentScreenshotBase64: null,
+  workouts: [],
+  shoes: [],
+  dynamicVdot: ATHLETE_PROFILE.baseVdot,
+  fatigueAdjustmentSec: 0, // Ajuste dinámico de ritmo (+ seg/km si hay sobrecarga)
+  fatigueStatus: 'normal', // 'normal', 'fatigued', 'supercompensated'
+  activeTab: 'dashboard',
   chartInstance: null
 };
 
 // ============================================================================
-// 2. FÓRMULAS MATEMÁTICAS Y FISIOLÓGICAS COMENTADAS EN DETALLE
+// 2. FÓRMULAS MATEMÁTICAS Y FISIOLÓGICAS COMENTADAS
 // ============================================================================
 
 /**
  * ----------------------------------------------------------------------------
- * A. FRECUENCIA CARDÍACA DE RESERVA (FÓRMULA DE MARTTI KARVONEN)
+ * A. ZONAS DE ENTRENAMIENTO POR FRECUENCIA CARDÍACA DE RESERVA (KARVONEN)
  * ----------------------------------------------------------------------------
- * El Dr. Martti Karvonen demostró que el % simple de FC Máxima no refleja la
- * intensidad fisiológica real porque ignora la eficiencia cardiaca en reposo.
- * Introduce la Frecuencia Cardíaca de Reserva (HRR):
- *
- *   HRR = HR_max - HR_rest
+ * Frecuencia Cardíaca de Reserva (HRR):
+ *   HRR = HR_max - HR_rest = 193 - 46 = 147 bpm
  *   HR_target = HR_rest + (%Intensidad * HRR)
  *
- * Variables:
- * - HR_max: Frecuencia Cardíaca Máxima (alcanzada en test de campo o 208 - 0.7 * edad).
- * - HR_rest: Frecuencia Cardíaca basal tomada al despertar en reposo supino.
- *
- * Distribución de Zonas Fisiológicas:
- * - Z1 (50% - 60% HRR): Regeneración activa tisular y depuración de metabolitos.
- * - Z2 (60% - 70% HRR): Base aeróbica pura, máxima oxidación lipídica (FatMax), biogénesis mitocondrial.
- * - Z3 (70% - 80% HRR): Tempo aeróbico, aumento de capilarización muscular y glucólisis lenta.
- * - Z4 (80% - 90% HRR): Umbral de Lactato (LT2 / OBLA), concentración de lactato ~4.0 mmol/L.
- * - Z5 (90% - 100% HRR): Potencia aeróbica máxima (VO2máx) y tolerancia anaeróbica.
+ * Zonas individuales calculadas para Dykembel Vargas:
+ * - Z1 (50% - 60% HRR): 120 - 134 bpm | Recuperación activa, reciclaje de lactato
+ * - Z2 (60% - 70% HRR): 134 - 149 bpm | Base aeróbica, FatMax (máxima quema de ácidos grasos)
+ * - Z3 (70% - 80% HRR): 149 - 164 bpm | Tempo aeróbico, aumento de capilarización muscular
+ * - Z4 (80% - 90% HRR): 164 - 178 bpm | Umbral de Lactato (LT2 / OBLA, ~4.0 mmol/L)
+ * - Z5 (90% - 100% HRR): 178 - 193 bpm | VO2máx & Capacidad anaeróbica láctica
  */
-function calculateKarvonenZones(hrRest, hrMax) {
-  const rest = parseInt(hrRest) || 60;
-  const max = parseInt(hrMax) || 190;
-  const hrr = Math.max(0, max - rest);
-
+function getKarvonenZones(hrRest = ATHLETE_PROFILE.hrRest, hrMax = ATHLETE_PROFILE.hrMax) {
+  const hrr = hrMax - hrRest;
   return [
     {
       zone: 'Z1',
-      name: 'Recuperación Activa',
-      pctRange: '50% - 60%',
-      min: Math.round(rest + 0.50 * hrr),
-      max: Math.round(rest + 0.60 * hrr),
-      color: '#38bdf8',
-      desc: 'Regeneración tisular y reciclaje de lactato residual.'
+      name: 'Regenerativo / Recup. Activa',
+      pct: '50% - 60%',
+      min: Math.round(hrRest + 0.50 * hrr),
+      max: Math.round(hrRest + 0.60 * hrr),
+      color: '#94a3b8',
+      desc: 'Rodajes suaves post-series para irrigación sanguínea sin estrés tisular.'
     },
     {
       zone: 'Z2',
       name: 'Base Aeróbica (FatMax)',
-      pctRange: '60% - 70%',
-      min: Math.round(rest + 0.60 * hrr),
-      max: Math.round(rest + 0.70 * hrr),
-      color: '#a3e635',
-      desc: 'Oxidación de grasas y economía de carrera sin estrés articular.'
+      pct: '60% - 70%',
+      min: Math.round(hrRest + 0.60 * hrr),
+      max: Math.round(hrRest + 0.70 * hrr),
+      color: '#6ee7b7',
+      desc: 'Rodajes fundamentales de volumen. Máxima biogénesis mitocondrial.'
     },
     {
       zone: 'Z3',
       name: 'Tempo / Sub-Umbral',
-      pctRange: '70% - 80%',
-      min: Math.round(rest + 0.70 * hrr),
-      max: Math.round(rest + 0.80 * hrr),
-      color: '#fbbf24',
-      desc: 'Resistencia a la fatiga glucolítica en distancias largas.'
+      pct: '70% - 80%',
+      min: Math.round(hrRest + 0.70 * hrr),
+      max: Math.round(hrRest + 0.80 * hrr),
+      color: '#38bdf8',
+      desc: 'Ritmo crucero para construcción de resistencia en distancias medias.'
     },
     {
       zone: 'Z4',
       name: 'Umbral de Lactato (LT2)',
-      pctRange: '80% - 90%',
-      min: Math.round(rest + 0.80 * hrr),
-      max: Math.round(rest + 0.90 * hrr),
-      color: '#fb923c',
-      desc: 'Ritmo sostenible por 60 min (máximo estado estable de lactato).'
+      pct: '80% - 90%',
+      min: Math.round(hrRest + 0.80 * hrr),
+      max: Math.round(hrRest + 0.90 * hrr),
+      color: '#fcd34d',
+      desc: 'Ritmo umbral sostenible por 50-60 min. Eleva el punto de inflexión de lactato.'
     },
     {
       zone: 'Z5',
-      name: 'VO2 Máx & Anaeróbico',
-      pctRange: '90% - 100%',
-      min: Math.round(rest + 0.90 * hrr),
-      max: max,
-      color: '#ef4444',
-      desc: 'Máxima potencia cardiovascular, series de 400m - 1200m.'
+      name: 'Potencia Aeróbica (VO2máx)',
+      pct: '90% - 100%',
+      min: Math.round(hrRest + 0.90 * hrr),
+      max: hrMax,
+      color: '#f87171',
+      desc: 'Series de 1000m en pista a ritmo de 3:25 - 3:30/km para expandir la VAM.'
     }
   ];
 }
 
 /**
  * ----------------------------------------------------------------------------
- * B. MODELO VDOT DE JACK DANIELS (ECUACIONES AERÓBICAS COMPLETAS)
+ * B. MODELO VDOT AERÓBICO DE JACK DANIELS
  * ----------------------------------------------------------------------------
- * Fórmulas oficiales de Jack Daniels & Jimmy Gilbert para cuantificar el VDOT:
- *
- * 1. Costo de oxígeno para correr a velocidad v (metros / minuto):
+ * 1. Costo de oxígeno a velocidad v (metros / minuto):
  *    VO2(v) = -4.60 + 0.182258 * v + 0.000104 * v^2
  *
- * 2. Fracción de VO2máx sostenible para una duración t (en minutos):
+ * 2. Fracción de VO2máx sostenible para duración t (minutos):
  *    f(t) = 0.8 + 0.1894393 * exp(-0.012778 * t) + 0.2989558 * exp(-0.1932605 * t)
  *
- * 3. VDOT del atleta:
- *    VDOT = VO2(v) / f(t)
+ * 3. VDOT = VO2(v) / f(t)
  *
- * 4. Paces de entrenamiento según % VDOT:
- *    - Easy (E): 70% VDOT
- *    - Marathon (M): 80% VDOT
- *    - Threshold / Umbral (T): 88% VDOT
- *    - Interval / VO2máx (I): 97.5% VDOT
- *    - Repetition (R): 107% VDOT
- *
- * Despeje de velocidad v a partir de VO2 deseado con la fórmula cuadrática:
- *   v = [ -0.182258 + sqrt(0.182258^2 - 4 * 0.000104 * (-VO2_target - 4.60)) ] / (2 * 0.000104)
- *   Ritmo (segundos/km) = (1000 / v) * 60
+ * 4. Paces según % VDOT:
+ *    - Easy (E): 70% VDOT (4:45 - 5:10/km)
+ *    - Marathon (M): 80% VDOT (4:12 - 4:20/km)
+ *    - Threshold / Umbral (T): 88% VDOT (3:52 - 3:56/km)
+ *    - Interval / VO2máx (I): 97.5% VDOT (3:28 - 3:32/km -> series de 1000m en pista)
+ *    - Repetition / Velocidad (R): 107% VDOT (3:15 - 3:20/km -> rectas y series de 200/400m)
  */
 function calculateVDOTFromRace(distanceMeters, timeMinutes) {
-  if (!distanceMeters || !timeMinutes || timeMinutes <= 0) return 35.0;
+  if (!distanceMeters || !timeMinutes || timeMinutes <= 0) return ATHLETE_PROFILE.baseVdot;
   const v = distanceMeters / timeMinutes;
   const vo2 = -4.60 + (0.182258 * v) + (0.000104 * Math.pow(v, 2));
   const fract = 0.80 + 0.1894393 * Math.exp(-0.012778 * timeMinutes) + 0.2989558 * Math.exp(-0.1932605 * timeMinutes);
   if (fract <= 0) return 30.0;
-  const vdot = vo2 / fract;
-  return Math.min(85, Math.max(25, Number(vdot.toFixed(1))));
+  return Number((vo2 / fract).toFixed(1));
 }
 
 function getVelocityFromVO2(vo2Target) {
@@ -157,9 +196,9 @@ function getVelocityFromVO2(vo2Target) {
   return (-b + Math.sqrt(discriminant)) / (2 * a);
 }
 
-function paceFromVelocity(vMetersPerMin) {
+function paceFromVelocity(vMetersPerMin, extraOffsetSec = 0) {
   if (vMetersPerMin <= 0) return '--:--';
-  const paceMinutes = 1000 / vMetersPerMin;
+  const paceMinutes = (1000 / vMetersPerMin) + (extraOffsetSec / 60);
   const mins = Math.floor(paceMinutes);
   const secs = Math.round((paceMinutes - mins) * 60);
   const paddedSecs = secs < 10 ? `0${secs}` : (secs === 60 ? '00' : secs);
@@ -167,123 +206,36 @@ function paceFromVelocity(vMetersPerMin) {
   return `${adjustedMins}:${paddedSecs}`;
 }
 
-function getDanielsTrainingPaces(vdot) {
-  const v = parseFloat(vdot) || 35.0;
+function getDanielsPaces(vdot, fatigueOffsetSec = 0) {
+  const v = parseFloat(vdot) || ATHLETE_PROFILE.baseVdot;
   return {
-    easy: paceFromVelocity(getVelocityFromVO2(v * 0.70)),
-    marathon: paceFromVelocity(getVelocityFromVO2(v * 0.80)),
-    threshold: paceFromVelocity(getVelocityFromVO2(v * 0.88)),
-    interval: paceFromVelocity(getVelocityFromVO2(v * 0.975)),
-    repetition: paceFromVelocity(getVelocityFromVO2(v * 1.07))
+    easy: paceFromVelocity(getVelocityFromVO2(v * 0.70), fatigueOffsetSec),
+    marathon: paceFromVelocity(getVelocityFromVO2(v * 0.80), fatigueOffsetSec),
+    threshold: paceFromVelocity(getVelocityFromVO2(v * 0.88), fatigueOffsetSec),
+    interval: paceFromVelocity(getVelocityFromVO2(v * 0.975), fatigueOffsetSec),
+    repetition: paceFromVelocity(getVelocityFromVO2(v * 1.07), fatigueOffsetSec)
   };
 }
 
 /**
  * ----------------------------------------------------------------------------
- * C. GAP (GRADE ADJUSTED PACE) - MODELO DE MINETTI ET AL. (2002)
+ * C. RATIO DE CARGA AGUDA : CRÓNICA (ACWR - GABBETT MODEL)
  * ----------------------------------------------------------------------------
- * El profesor Alberto Minetti midió el costo metabólico Cr en diferentes pendientes i:
+ * Cuantificación del balance carga-fatiga para prevenir sobreentrenamiento:
+ *   Carga de Sesión (AU) = Duración (minutos) * RPE (Borg 1-10)
+ *   Carga Aguda = Promedio de carga de los últimos 7 días.
+ *   Carga Crónica = Promedio de carga de los últimos 28 días.
+ *   ACWR = Carga Aguda / Carga Crónica
  *
- *   Cr(i) = 155.4 * i^5 - 30.4 * i^4 - 43.3 * i^3 + 46.3 * i^2 + 19.5 * i + 3.6
- *   (en J / kg / m)
- *
- * En plano (i = 0), Cr(0) = 3.6 J / kg / m.
- * Relación de Costo = Cr(i) / 3.6.
- * Ritmo Plano Equivalente (GAP) = Ritmo Real (seg/km) / Relación de Costo.
- */
-function calculateMinettiGAP(paceSecPerKm, elevationGainMeters, distanceKm) {
-  if (!distanceKm || distanceKm <= 0 || !paceSecPerKm || paceSecPerKm <= 0) {
-    return paceSecPerKm;
-  }
-  const distanceMeters = distanceKm * 1000;
-  const gradient = Math.max(-0.45, Math.min(0.45, elevationGainMeters / distanceMeters));
-  const i = gradient;
-
-  const cr = (155.4 * Math.pow(i, 5)) -
-             (30.4 * Math.pow(i, 4)) -
-             (43.3 * Math.pow(i, 3)) +
-             (46.3 * Math.pow(i, 2)) +
-             (19.5 * i) +
-             3.6;
-
-  const costRatio = Math.max(0.65, cr / 3.6);
-  return Math.round(paceSecPerKm / costRatio);
-}
-
-/**
- * ----------------------------------------------------------------------------
- * D. PENALIZACIÓN CLIMÁTICA Y PUNTO DE ROCÍO (MAGNUS-TETENS)
- * ----------------------------------------------------------------------------
- * Ecuación de Magnus-Tetens para calcular Punto de Rocío (Dew Point, Td):
- *   alpha(T, RH) = [ (17.27 * T) / (237.7 + T) ] + ln(RH / 100)
- *   Td = (237.7 * alpha) / (17.27 - alpha)
- *
- * Índice Combinado = T + Td (en °C).
- * Penalización sobre el ritmo según estrés fisiológico:
- * - < 38°C: 0% penalización
- * - 38°C a 43°C: 1.8% (~4-6 s/km)
- * - 44°C a 49°C: 3.8% (~10-14 s/km)
- * - 50°C a 55°C: 6.5% (~18-25 s/km)
- * - > 55°C: 10.0% (>30 s/km)
- */
-function calculateDewPointAndPenalty(tempC, humidityPct, paceSecPerKm) {
-  if (tempC === undefined || humidityPct === undefined || isNaN(tempC) || isNaN(humidityPct)) {
-    return { dewPoint: null, combinedIndex: null, penaltyPct: 0, penaltySecPerKm: 0, adjustedPaceSec: paceSecPerKm };
-  }
-
-  const rhClamped = Math.max(1, Math.min(100, humidityPct));
-  const a = 17.27;
-  const b = 237.7;
-  const alpha = ((a * tempC) / (b + tempC)) + Math.log(rhClamped / 100);
-  const dewPoint = (b * alpha) / (a - alpha);
-  const combined = tempC + dewPoint;
-
-  let penaltyPct = 0;
-  if (combined < 38) penaltyPct = 0;
-  else if (combined <= 43) penaltyPct = 1.8;
-  else if (combined <= 49) penaltyPct = 3.8;
-  else if (combined <= 55) penaltyPct = 6.5;
-  else penaltyPct = 10.0;
-
-  const penaltySecPerKm = Math.round((paceSecPerKm * penaltyPct) / 100);
-  const adjustedPaceSec = Math.max(120, paceSecPerKm - penaltySecPerKm);
-
-  return {
-    dewPoint: Number(dewPoint.toFixed(1)),
-    combinedIndex: Number(combined.toFixed(1)),
-    penaltyPct,
-    penaltySecPerKm,
-    adjustedPaceSec
-  };
-}
-
-/**
- * ----------------------------------------------------------------------------
- * E. RATIO DE CARGA AGUDA : CRÓNICA (ACWR - GABBETT MODEL)
- * ----------------------------------------------------------------------------
- * Carga de Sesión (sRPE en Arbitrary Units, AU):
- *   Carga = Duración (minutos) * RPE (Borg 1-10)
- *
- * Carga Aguda: Media móvil de los últimos 7 días.
- * Carga Crónica: Media móvil de los últimos 28 días.
- *
- * ACWR = Carga Aguda / Carga Crónica
- * - Si no hay datos (0 registros): ACWR = 0.00 (Esperando datos)
+ * Zonas:
  * - < 0.8: Sub-entrenamiento
- * - 0.8 a 1.3: "Sweet Spot" (Zona óptima de rendimiento con mínimo riesgo de lesión)
- * - 1.3 a 1.5: Sobrecarga / Alerta amarilla
- * - > 1.5: "Danger Zone" (Alto riesgo de lesión muscular o periostitis)
+ * - 0.8 a 1.3: "Sweet Spot" (Zona óptima de adaptación)
+ * - 1.3 a 1.5: Zona de precaución
+ * - > 1.5: Peligro de lesión músculo-tendinosa
  */
 function calculateACWR(workouts, targetDate = new Date()) {
   if (!workouts || workouts.length === 0) {
-    return {
-      acuteLoad: 0,
-      chronicLoad: 0,
-      acwr: 0.0,
-      status: 'nodata',
-      badgeText: 'Pizarra en Cero (0 Entrenamientos)',
-      color: '#64748b'
-    };
+    return { acuteLoad: 0, chronicLoad: 0, acwr: 0.0, status: 'nodata', badgeText: 'Pizarra Limpia (0 km)', color: '#94a3b8' };
   }
 
   const ONE_DAY_MS = 24 * 60 * 60 * 1000;
@@ -315,125 +267,203 @@ function calculateACWR(workouts, targetDate = new Date()) {
   const chronicLoad = chronicSum / 28;
 
   if (chronicLoad === 0 && acuteLoad === 0) {
-    return {
-      acuteLoad: 0,
-      chronicLoad: 0,
-      acwr: 0.0,
-      status: 'nodata',
-      badgeText: 'Sin Carga Reciente (0 AU)',
-      color: '#64748b'
-    };
+    return { acuteLoad: 0, chronicLoad: 0, acwr: 0.0, status: 'nodata', badgeText: 'Sin carga reciente (0 AU)', color: '#94a3b8' };
   }
 
-  const acwr = chronicLoad > 0 ? Number((acuteLoad / chronicLoad).toFixed(2)) : (acuteLoad > 0 ? 1.5 : 1.0);
+  const acwr = chronicLoad > 0 ? Number((acuteLoad / chronicLoad).toFixed(2)) : (acuteLoad > 0 ? 1.4 : 1.0);
 
   let status = 'optimal';
-  let badgeText = 'Óptimo (0.8 - 1.3)';
-  let color = '#a3e635';
+  let badgeText = 'Zona Óptima (0.8 - 1.3)';
+  let color = '#6ee7b7'; // Verde salvia suave
 
   if (acwr < 0.8) {
     status = 'undertraining';
     badgeText = 'Sub-entrenamiento (< 0.8)';
-    color = '#38bdf8';
+    color = '#94a3b8'; // Gris azulado
   } else if (acwr > 1.5) {
     status = 'danger';
-    badgeText = 'Zona de Peligro (> 1.5)';
-    color = '#ef4444';
+    badgeText = 'Alerta de Carga (> 1.5)';
+    color = '#f87171'; // Rosa pastel alerta
   } else if (acwr > 1.3) {
     status = 'warning';
-    badgeText = 'Sobrecarga / Alerta (1.3 - 1.5)';
-    color = '#fbbf24';
+    badgeText = 'Precaución (1.3 - 1.5)';
+    color = '#fcd34d'; // Ámbar suave
   }
 
-  return {
-    acuteLoad: Math.round(acuteLoad),
-    chronicLoad: Math.round(chronicLoad),
-    acwr,
-    status,
-    badgeText,
-    color
-  };
-}
-
-/**
- * ----------------------------------------------------------------------------
- * F. TEST DE SUDORACIÓN Y PROTOCOLO DE REPOSICIÓN ELECTROLÍTICA
- * ----------------------------------------------------------------------------
- * Pérdida Total de Sudor (L) = (Peso_Pre - Peso_Post) + Líquido_Ingerido_L
- * Tasa Horaria (L/h) = Pérdida Total / (Duración_Minutos / 60)
- * Rehidratación: 150% del peso perdido + 850 mg de sodio (Na+) por litro sudado.
- */
-function calculateSweatTest(preWeightKg, postWeightKg, fluidConsumedMl, durationMin) {
-  const pre = parseFloat(preWeightKg);
-  const post = parseFloat(postWeightKg);
-  const fluidL = parseFloat(fluidConsumedMl) / 1000;
-  const durMin = parseFloat(durationMin);
-
-  if (isNaN(pre) || isNaN(post) || isNaN(fluidL) || isNaN(durMin) || durMin <= 0) return null;
-
-  const weightDeficitKg = pre - post;
-  const totalSweatLostL = Math.max(0, weightDeficitKg + fluidL);
-  const hours = durMin / 60;
-  const sweatRatePerHourL = totalSweatLostL / hours;
-  const dehydrationPct = (weightDeficitKg / pre) * 100;
-  const rehydrationNeededMl = Math.round(weightDeficitKg * 1500);
-  const sodiumReplenishmentMg = Math.round(totalSweatLostL * 850);
-
-  return {
-    totalSweatLostL: Number(totalSweatLostL.toFixed(2)),
-    sweatRatePerHourL: Number(sweatRatePerHourL.toFixed(2)),
-    dehydrationPct: Number(dehydrationPct.toFixed(1)),
-    rehydrationNeededMl: Math.max(0, rehydrationNeededMl),
-    sodiumReplenishmentMg: Math.max(0, sodiumReplenishmentMg)
-  };
-}
-
-/**
- * ----------------------------------------------------------------------------
- * G. VENTANA METABÓLICA Y RESÍNTESIS DE GLUCÓGENO
- * ----------------------------------------------------------------------------
- * Aporte de carbohidratos (0.8 a 1.2 g/kg) y proteínas de alto valor biológico
- * (0.3 a 0.35 g/kg) dentro de los primeros 45 minutos post-carrera.
- */
-function calculateMetabolicWindow(weightKg, durationMin, intensityLevel) {
-  const weight = parseFloat(weightKg);
-  const min = parseFloat(durationMin);
-  if (isNaN(weight) || isNaN(min) || weight <= 0) return null;
-
-  let choPerKg = 1.0;
-  let proPerKg = 0.35;
-  let ratioStr = '3:1';
-
-  if (intensityLevel === 'high') {
-    choPerKg = 1.2;
-    proPerKg = 0.35;
-    ratioStr = '3.5:1';
-  } else if (intensityLevel === 'low') {
-    choPerKg = 0.8;
-    proPerKg = 0.30;
-    ratioStr = '2.7:1';
-  }
-
-  const totalCHO = Math.round(weight * choPerKg);
-  const totalPRO = Math.round(weight * proPerKg);
-  const totalKcal = (totalCHO * 4) + (totalPRO * 4);
-
-  return {
-    choGrams: totalCHO,
-    proGrams: totalPRO,
-    ratio: ratioStr,
-    totalKcal,
-    foodSuggestions: [
-      `Opción A: Batido con 350ml de leche deslactosada o avena + 1 plátano maduro + ${Math.round(totalPRO * 0.9)}g proteína aislada de suero.`,
-      `Opción B: 1 tazón de arroz blanco cocido (aprox. ${Math.round(totalCHO * 3.5)}g) con pechuga de pollo (${Math.round(totalPRO * 3.3)}g).`,
-      `Opción C: 2 rebanadas de pan tostado con miel de abeja + 2 huevos cocidos y 2 claras.`
-    ]
-  };
+  return { acuteLoad: Math.round(acuteLoad), chronicLoad: Math.round(chronicLoad), acwr, status, badgeText, color };
 }
 
 // ============================================================================
-// 3. UTILIDADES DE TIEMPO, RITMOS Y CONVERSIÓN
+// 3. MOTOR DINÁMICO DE MICROCICLO Y ADAPTACIÓN AL ESFUERZO
 // ============================================================================
+
+/**
+ * Analiza el historial reciente de entrenamientos de Dykembel para calibrar
+ * automáticamente el VDOT dinámico o aplicar compensación por fatiga.
+ */
+function analyzeFatigueAndAdaptation() {
+  const recentWorkouts = [...AppState.workouts]
+    .sort((a, b) => new Date(b.date) - new Date(a.date))
+    .slice(0, 4);
+
+  if (recentWorkouts.length === 0) {
+    AppState.fatigueStatus = 'normal';
+    AppState.fatigueAdjustmentSec = 0;
+    AppState.dynamicVdot = ATHLETE_PROFILE.baseVdot;
+    return;
+  }
+
+  let highFatigueCount = 0;
+  let superCompCount = 0;
+
+  recentWorkouts.forEach(w => {
+    const pace = calculatePace(w.distance, w.duration);
+    const rpe = parseInt(w.rpe) || 5;
+
+    // Si reporta RPE > 8 en rodaje aeróbico o FC media elevada (> 165 bpm en rodaje suave)
+    if (rpe >= 8 && w.distance <= 10) {
+      highFatigueCount++;
+    }
+
+    // Si completa series o carrera a ritmo muy fuerte (< 3:35/km) con RPE moderado (<= 7)
+    if (pace.paceSec > 0 && pace.paceSec <= 215 && rpe <= 7) {
+      superCompCount++;
+    }
+  });
+
+  if (highFatigueCount >= 2) {
+    // Alerta de Fatiga: Ralentizar ritmos sugeridos entre +6 y +10 s/km para proteger sóleo y periostio
+    AppState.fatigueStatus = 'fatigued';
+    AppState.fatigueAdjustmentSec = 8;
+    AppState.dynamicVdot = Math.max(49.0, ATHLETE_PROFILE.baseVdot - 0.8);
+  } else if (superCompCount >= 1) {
+    // Rendimiento superior: Atleta asimilando cargas positivamente
+    AppState.fatigueStatus = 'supercompensated';
+    AppState.fatigueAdjustmentSec = -3;
+    AppState.dynamicVdot = Math.min(56.5, ATHLETE_PROFILE.baseVdot + 0.6);
+  } else {
+    AppState.fatigueStatus = 'normal';
+    AppState.fatigueAdjustmentSec = 0;
+    AppState.dynamicVdot = ATHLETE_PROFILE.baseVdot;
+  }
+}
+
+/**
+ * Genera el microciclo semanal de 6 días adaptado a las marcas de Dykembel:
+ * 1 Fondo largo, 2 Calidades (Series 1000m pista y Umbral), 3 Rodajes aeróbicos, 1 Descanso.
+ */
+function generateDynamicMicrocycle() {
+  const paces = getDanielsPaces(AppState.dynamicVdot, AppState.fatigueAdjustmentSec);
+  const isFatigued = AppState.fatigueStatus === 'fatigued';
+
+  return [
+    {
+      day: 'Lunes',
+      type: 'Rodaje Aeróbico Z2 + Rectas',
+      shoeId: 'asics-gt1000',
+      shoeName: 'Asics GT-1000 10',
+      volume: '10.0 km',
+      targetPace: paces.easy,
+      hrTarget: '135 - 148 bpm',
+      desc: isFatigued
+        ? 'Rodaje regenerativo suave a ritmo muy cómodo + 15 min de movilidad articular y estiramientos.'
+        : 'Rodaje continuo en Z2 estricto finalizando con 5 rectas técnicas de 100m en césped (cadencia 180+ spm).'
+    },
+    {
+      day: 'Martes',
+      type: 'Calidad 1: Series 1000m en Pista (VAM / VO2máx)',
+      shoeId: 'adidas-boston11',
+      shoeName: 'Adidas Adizero Boston 11',
+      volume: '13.5 km',
+      targetPace: paces.interval,
+      hrTarget: '178 - 190 bpm',
+      desc: isFatigued
+        ? 'Ajuste por fatiga: 4 x 1000m a ritmo controlado con 2 min de recuperación caminando/trotando.'
+        : `3 km calentamiento + 5 x 1000m a ritmo de ${paces.interval} (PB reciente 3:30) con 90s trote Z1 + 2.5 km enfriamiento.`
+    },
+    {
+      day: 'Miércoles',
+      type: 'Rodaje de Asimilación Z1-Z2',
+      shoeId: 'asics-gt1000',
+      shoeName: 'Asics GT-1000 10',
+      volume: '8.0 km',
+      targetPace: paces.easy,
+      hrTarget: '125 - 142 bpm',
+      desc: 'Rodaje conversacional suave para facilitar el aclaramiento de lactato y la recuperación neuromuscular.'
+    },
+    {
+      day: 'Jueves',
+      type: 'Calidad 2: Ritmo Umbral de Lactato (LT2 / Tempo)',
+      shoeId: 'adidas-boston11',
+      shoeName: 'Adidas Adizero Boston 11',
+      volume: '14.0 km',
+      targetPace: paces.threshold,
+      hrTarget: '164 - 176 bpm',
+      desc: `3 km calentamiento + 3 x 2000m sostenidos a ritmo de ${paces.threshold} (recup. 2 min trote) + 2 km enfriamiento.`
+    },
+    {
+      day: 'Viernes',
+      type: 'Descanso Total / Movilidad y Fuerza',
+      shoeId: null,
+      shoeName: 'Sin calzado (Impacto 0)',
+      volume: '0.0 km',
+      targetPace: '--:--',
+      hrTarget: '< 100 bpm',
+      desc: 'Día de regeneración pasiva o sesión de core, puente de glúteos y excéntricos de sóleo/gemelos.'
+    },
+    {
+      day: 'Sábado',
+      type: 'Rodaje Progresivo Aeróbico',
+      shoeId: 'asics-gt1000',
+      shoeName: 'Asics GT-1000 10',
+      volume: '9.0 km',
+      targetPace: `${paces.easy} ➔ ${paces.marathon}`,
+      hrTarget: '138 - 158 bpm',
+      desc: '6 km en Zona 2 aeróbica terminando los últimos 3 km a Ritmo Maratón con sensación de fluidez.'
+    },
+    {
+      day: 'Domingo',
+      type: 'Tirada Larga Aeróbica (Long Run)',
+      shoeId: 'olympikus-corre2',
+      shoeName: 'Olympikus Corre 2',
+      volume: '17.0 km',
+      targetPace: paces.easy,
+      hrTarget: '135 - 150 bpm',
+      desc: 'Fondo dominical continuo para aumentar la densidad mitocondrial y la eficiencia en el uso de glucógeno. Hidratación regular cada 3 km.'
+    }
+  ];
+}
+
+// ============================================================================
+// 4. PERSISTENCIA EN LOCALSTORAGE Y UTILIDADES
+// ============================================================================
+
+function initializeData() {
+  const storedWorkouts = localStorage.getItem(STORAGE_KEYS.WORKOUTS);
+  AppState.workouts = storedWorkouts ? JSON.parse(storedWorkouts) : [];
+
+  const storedShoes = localStorage.getItem(STORAGE_KEYS.SHOES);
+  if (!storedShoes) {
+    localStorage.setItem(STORAGE_KEYS.SHOES, JSON.stringify(DEFAULT_SHOES));
+    AppState.shoes = [...DEFAULT_SHOES];
+  } else {
+    try {
+      AppState.shoes = JSON.parse(storedShoes);
+    } catch (e) {
+      AppState.shoes = [...DEFAULT_SHOES];
+    }
+  }
+
+  analyzeFatigueAndAdaptation();
+}
+
+function saveWorkouts() {
+  localStorage.setItem(STORAGE_KEYS.WORKOUTS, JSON.stringify(AppState.workouts));
+}
+
+function saveShoes() {
+  localStorage.setItem(STORAGE_KEYS.SHOES, JSON.stringify(AppState.shoes));
+}
 
 function timeStringToMinutes(timeStr) {
   if (!timeStr) return 0;
@@ -465,340 +495,7 @@ function calculatePace(distanceKm, durationTimeStr) {
 }
 
 // ============================================================================
-// 4. PERSISTENCIA EN LOCALSTORAGE (INICIO DESDE CERO)
-// ============================================================================
-
-function initializeStorage() {
-  const storedProfiles = localStorage.getItem(STORAGE_KEYS.PROFILES);
-  if (storedProfiles) {
-    try {
-      AppState.profiles = JSON.parse(storedProfiles);
-    } catch (e) {
-      AppState.profiles = [];
-    }
-  } else {
-    AppState.profiles = [];
-  }
-
-  // Cargar perfil activo si existe
-  const savedProfileId = localStorage.getItem(STORAGE_KEYS.ACTIVE_PROFILE);
-  if (savedProfileId && AppState.profiles.some(p => p.id === savedProfileId)) {
-    AppState.currentProfileId = savedProfileId;
-  } else if (AppState.profiles.length > 0) {
-    AppState.currentProfileId = AppState.profiles[0].id;
-  } else {
-    AppState.currentProfileId = null;
-  }
-
-  // Entrenamientos: Inicio 100% en CERO (sin semillas ficticias)
-  const storedWorkouts = localStorage.getItem(STORAGE_KEYS.WORKOUTS);
-  AppState.workouts = storedWorkouts ? JSON.parse(storedWorkouts) : [];
-
-  // Zapatillas: Inicio 100% en CERO
-  const storedShoes = localStorage.getItem(STORAGE_KEYS.SHOES);
-  AppState.shoes = storedShoes ? JSON.parse(storedShoes) : [];
-}
-
-function saveProfiles() {
-  localStorage.setItem(STORAGE_KEYS.PROFILES, JSON.stringify(AppState.profiles));
-}
-
-function saveWorkouts() {
-  localStorage.setItem(STORAGE_KEYS.WORKOUTS, JSON.stringify(AppState.workouts));
-}
-
-function saveShoes() {
-  localStorage.setItem(STORAGE_KEYS.SHOES, JSON.stringify(AppState.shoes));
-}
-
-// ============================================================================
-// 5. CONTROL DE ACCESO, PERFILES Y AUTENTICACIÓN POR PIN
-// ============================================================================
-
-function getCurrentProfile() {
-  return AppState.profiles.find(p => p.id === AppState.currentProfileId) || null;
-}
-
-function switchProfile(profileId) {
-  if (AppState.currentProfileId !== profileId) {
-    AppState.currentProfileId = profileId;
-    AppState.isUnlocked = false; // Bloquear edición al cambiar de perfil
-    localStorage.setItem(STORAGE_KEYS.ACTIVE_PROFILE, profileId);
-    renderAll();
-    showToast(`Cambiado al perfil ${getCurrentProfile()?.name}. Modo Solo Lectura.`, 'info');
-  }
-}
-
-function verifyPin(inputPin) {
-  const profile = getCurrentProfile();
-  if (profile && profile.pin === inputPin) {
-    AppState.isUnlocked = true;
-    updateLockBadge();
-    closePinModal();
-    showToast(`🔓 Acceso concedido como ${profile.name}. Modo Edición habilitado.`, 'success');
-    return true;
-  } else {
-    showToast('❌ PIN incorrecto. Acceso bloqueado.', 'error');
-    return false;
-  }
-}
-
-function lockProfile() {
-  AppState.isUnlocked = false;
-  updateLockBadge();
-  showToast('🔒 Modo Solo Lectura activado.', 'info');
-}
-
-function checkPermissionOrPrompt(callback) {
-  if (AppState.isUnlocked) {
-    callback();
-  } else {
-    openPinModal(callback);
-  }
-}
-
-// ============================================================================
-// 6. FLUJO DE ONBOARDING: CREACIÓN DE PERFIL Y ASIGNACIÓN DE PIN
-// ============================================================================
-
-function checkOnboardingRequirement() {
-  if (!AppState.profiles || AppState.profiles.length === 0) {
-    openCreateProfileModal(true); // Forzar onboarding inicial
-  }
-}
-
-function openCreateProfileModal(isInitial = false) {
-  const modal = document.getElementById('createProfileModal');
-  const title = document.getElementById('createProfileModalTitle');
-  const cancelBtn = document.getElementById('btnCancelCreateProfile');
-
-  if (modal) {
-    modal.classList.remove('hidden');
-    if (isInitial) {
-      if (title) title.textContent = '👋 BIENVENIDO: CREA TU PERFIL DE ATLETA';
-      if (cancelBtn) cancelBtn.classList.add('hidden'); // Obligatorio en primer arranque
-    } else {
-      if (title) title.textContent = 'NUEVO PERFIL DE ATLETA';
-      if (cancelBtn) cancelBtn.classList.remove('hidden');
-    }
-  }
-}
-
-function closeCreateProfileModal() {
-  const modal = document.getElementById('createProfileModal');
-  if (modal) modal.classList.add('hidden');
-}
-
-function setupCreateProfileForm() {
-  const form = document.getElementById('createProfileForm');
-  const cancelBtn = document.getElementById('btnCancelCreateProfile');
-
-  if (cancelBtn) {
-    cancelBtn.addEventListener('click', closeCreateProfileModal);
-  }
-
-  if (form) {
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-
-      const name = document.getElementById('newProfName').value.trim();
-      const planType = document.getElementById('newProfGoal').value;
-      const weight = parseFloat(document.getElementById('newProfWeight').value) || 70.0;
-      const hrRest = parseInt(document.getElementById('newProfHrRest').value) || 55;
-      const hrMax = parseInt(document.getElementById('newProfHrMax').value) || 190;
-      const pin = document.getElementById('newProfPin').value.trim();
-      const pinConfirm = document.getElementById('newProfPinConfirm').value.trim();
-      const recent10k = document.getElementById('newProfRecent10k').value.trim();
-
-      if (!name) {
-        showToast('⚠️ Ingresa el nombre del atleta.', 'error');
-        return;
-      }
-
-      if (pin.length !== 4 || !/^\d{4}$/.test(pin)) {
-        showToast('⚠️ El PIN debe constar exactamente de 4 dígitos numéricos.', 'error');
-        return;
-      }
-
-      if (pin !== pinConfirm) {
-        showToast('⚠️ Los códigos PIN no coinciden. Verifícalos.', 'error');
-        return;
-      }
-
-      // Estimar VDOT inicial a partir de tiempo 10K ingresado o por defecto según plan
-      let vdot = 35.0;
-      if (recent10k && recent10k.includes(':')) {
-        const timeMin = timeStringToMinutes(recent10k);
-        vdot = calculateVDOTFromRace(10000, timeMin);
-      } else {
-        vdot = planType === 'elite' ? 58.0 : (planType === 'progression' ? 36.0 : 45.0);
-      }
-
-      const newProfile = {
-        id: `prof-${Date.now()}`,
-        name,
-        category: planType === 'elite' ? 'Élite (Sub-38 10K)' : 'Progresión (Sub-60 10K)',
-        pin,
-        weight,
-        hrRest,
-        hrMax,
-        vdot,
-        planType
-      };
-
-      AppState.profiles.push(newProfile);
-      saveProfiles();
-
-      // Activar y desbloquear inmediatamente para el creador
-      AppState.currentProfileId = newProfile.id;
-      AppState.isUnlocked = true;
-      localStorage.setItem(STORAGE_KEYS.ACTIVE_PROFILE, newProfile.id);
-
-      closeCreateProfileModal();
-      form.reset();
-      renderAll();
-      showToast(`🏆 ¡Perfil "${name}" creado exitosamente! PIN guardado y permisos de edición concedidos.`, 'success');
-    });
-  }
-}
-
-// ============================================================================
-// 7. INGESTA INTELIGENTE CON PANTALLAZOS DE RELOJ (COMPRESIÓN & OCR)
-// ============================================================================
-
-function setupScreenshotUploader() {
-  const fileInput = document.getElementById('screenshotFileInput');
-  const dropZone = document.getElementById('screenshotDropZone');
-  const previewContainer = document.getElementById('screenshotPreviewContainer');
-  const previewImg = document.getElementById('screenshotPreviewImg');
-  const removeBtn = document.getElementById('btnRemoveScreenshot');
-  const autoDetectBtn = document.getElementById('btnAutoDetectScreenshot');
-
-  if (!fileInput || !dropZone) return;
-
-  // Manejo de Drag and Drop
-  dropZone.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    dropZone.classList.add('border-lime-400', 'bg-lime-950/20');
-  });
-
-  dropZone.addEventListener('dragleave', () => {
-    dropZone.classList.remove('border-lime-400', 'bg-lime-950/20');
-  });
-
-  dropZone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    dropZone.classList.remove('border-lime-400', 'bg-lime-950/20');
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      processScreenshotFile(e.dataTransfer.files[0]);
-    }
-  });
-
-  fileInput.addEventListener('change', (e) => {
-    if (e.target.files && e.target.files[0]) {
-      processScreenshotFile(e.target.files[0]);
-    }
-  });
-
-  if (removeBtn) {
-    removeBtn.addEventListener('click', () => {
-      AppState.currentScreenshotBase64 = null;
-      if (fileInput) fileInput.value = '';
-      if (previewContainer) previewContainer.classList.add('hidden');
-      if (dropZone) dropZone.classList.remove('hidden');
-      showToast('Captura removida.', 'info');
-    });
-  }
-
-  // Asistente inteligente de extracción desde captura
-  if (autoDetectBtn) {
-    autoDetectBtn.addEventListener('click', () => {
-      if (!AppState.currentScreenshotBase64) return;
-      simulateSmartWatchExtraction();
-    });
-  }
-}
-
-/**
- * Procesa la imagen mediante un canvas HTML5 para escalarla y comprimirla en WebP/JPEG,
- * garantizando que quepa perfectamente en localStorage sin saturar la cuota de almacenamiento.
- */
-function processScreenshotFile(file) {
-  if (!file.type.startsWith('image/')) {
-    showToast('⚠️ Por favor selecciona un archivo de imagen válido.', 'error');
-    return;
-  }
-
-  const reader = new FileReader();
-  reader.onload = (event) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const MAX_WIDTH = 900;
-      const MAX_HEIGHT = 900;
-      let width = img.width;
-      let height = img.height;
-
-      if (width > height) {
-        if (width > MAX_WIDTH) {
-          height = Math.round((height * MAX_WIDTH) / width);
-          width = MAX_WIDTH;
-        }
-      } else {
-        if (height > MAX_HEIGHT) {
-          width = Math.round((width * MAX_HEIGHT) / height);
-          height = MAX_HEIGHT;
-        }
-      }
-
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, width, height);
-
-      // Comprimir a JPEG con calidad 0.72
-      const compressedBase64 = canvas.toDataURL('image/jpeg', 0.72);
-      AppState.currentScreenshotBase64 = compressedBase64;
-
-      // Mostrar vista previa
-      const previewContainer = document.getElementById('screenshotPreviewContainer');
-      const previewImg = document.getElementById('screenshotPreviewImg');
-      const dropZone = document.getElementById('screenshotDropZone');
-
-      if (previewImg) previewImg.src = compressedBase64;
-      if (previewContainer) previewContainer.classList.remove('hidden');
-      if (dropZone) dropZone.classList.add('hidden');
-
-      showToast('📸 Pantallazo de reloj cargado y optimizado. Pulsa "Auto-Detectar" o completa los campos.', 'success');
-    };
-    img.src = event.target.result;
-  };
-  reader.readAsDataURL(file);
-}
-
-/**
- * Asistente de transcripción inteligente que apoya al atleta extrayendo o sugiriendo
- * métricas visuales del reloj en los campos del formulario.
- */
-function simulateSmartWatchExtraction() {
-  const distInput = document.getElementById('ingestDistance');
-  const durInput = document.getElementById('ingestDuration');
-  const hrInput = document.getElementById('ingestAvgHr');
-  const elevInput = document.getElementById('ingestElevation');
-  const cadenceInput = document.getElementById('ingestCadence');
-
-  // Si los campos están vacíos, sugerir datos tipo para agilizar
-  if (distInput && !distInput.value) distInput.value = '10.00';
-  if (durInput && !durInput.value) durInput.value = '52:00';
-  if (hrInput && !hrInput.value) hrInput.value = '148';
-  if (elevInput && !elevInput.value) elevInput.value = '65';
-  if (cadenceInput && !cadenceInput.value) cadenceInput.value = '176';
-
-  showToast('⚡ Métricas sugeridas desde tu captura. Verifica los valores antes de guardar.', 'info');
-}
-
-// ============================================================================
-// 8. RENDERIZADO DE INTERFAZ Y ESTADOS
+// 5. CONTROLADORES DE RENDERIZADO Y DOM
 // ============================================================================
 
 function switchTab(tabName) {
@@ -810,66 +507,59 @@ function switchTab(tabName) {
   document.querySelectorAll('.nav-btn').forEach(btn => {
     const target = btn.dataset.tab;
     if (target === tabName) {
-      btn.classList.add('text-lime-400', 'border-b-2', 'border-lime-400', 'bg-slate-800/60');
+      btn.classList.add('text-emerald-300', 'border-b-2', 'border-emerald-400', 'bg-slate-800/80');
       btn.classList.remove('text-slate-400');
     } else {
-      btn.classList.remove('text-lime-400', 'border-b-2', 'border-lime-400', 'bg-slate-800/60');
+      btn.classList.remove('text-emerald-300', 'border-b-2', 'border-emerald-400', 'bg-slate-800/80');
       btn.classList.add('text-slate-400');
     }
   });
 
   if (tabName === 'dashboard') renderACWRChart();
-  if (tabName === 'scientific') renderScientificCalcs();
-  if (tabName === 'planner') renderTrainingPlan();
-  if (tabName === 'shoes') renderShoes();
+  if (tabName === 'planner') renderMicrocycle();
+  if (tabName === 'scientific') renderScientificZones();
+  if (tabName === 'shoes') renderShoeRotation();
 }
 
-function updateLockBadge() {
-  const badge = document.getElementById('lockBadge');
-  const btn = document.getElementById('lockToggleBtn');
-  if (!badge || !btn) return;
+function renderDashboard() {
+  analyzeFatigueAndAdaptation();
+  const paces = getDanielsPaces(AppState.dynamicVdot, AppState.fatigueAdjustmentSec);
 
-  if (AppState.isUnlocked) {
-    badge.className = 'px-2 py-0.5 text-xs font-mono rounded-full bg-lime-950 text-lime-400 border border-lime-500/40 flex items-center gap-1';
-    badge.innerHTML = `<span>🔓</span><span>EDICIÓN HABILITADA</span>`;
-    btn.innerHTML = `<span>🔒 Bloquear</span>`;
-    btn.className = 'text-xs text-slate-400 hover:text-rose-400 transition underline cursor-pointer';
-  } else {
-    badge.className = 'px-2 py-0.5 text-xs font-mono rounded-full bg-slate-800 text-slate-400 border border-slate-700 flex items-center gap-1';
-    badge.innerHTML = `<span>🔒</span><span>SOLO LECTURA</span>`;
-    btn.innerHTML = `<span>Ingresar PIN</span>`;
-    btn.className = 'text-xs text-lime-400 hover:text-lime-300 font-semibold underline cursor-pointer';
+  // 1. Métricas de Objetivos
+  const current5kPaceSec = ATHLETE_PROFILE.records.race5k.recentPaceSec; // 233s = 3:53
+  const target5kPaceSec = ATHLETE_PROFILE.targets.target5k.paceSec;      // 215.8s = 3:36
+  const diff5k = current5kPaceSec - target5kPaceSec;                     // ~17s a recortar
+
+  const diff10k = 243 - ATHLETE_PROFILE.targets.target10k.paceSec;       // ~21s a recortar
+
+  document.getElementById('dashCurrent5kPace').textContent = ATHLETE_PROFILE.records.race5k.recentPaceStr;
+  document.getElementById('dashTarget5kPace').textContent = ATHLETE_PROFILE.targets.target5k.paceStr;
+  document.getElementById('dash5kDelta').textContent = `-${Math.round(diff5k)} s/km para Sub-18`;
+
+  document.getElementById('dashCurrent10kPace').textContent = '4:03 /km (PB 42:36)';
+  document.getElementById('dashTarget10kPace').textContent = ATHLETE_PROFILE.targets.target10k.paceStr;
+  document.getElementById('dash10kDelta').textContent = `-${Math.round(diff10k)} s/km para Sub-37`;
+
+  // 2. Estado Fisiológico y VDOT Dinámico
+  document.getElementById('dashDynamicVdot').textContent = AppState.dynamicVdot.toFixed(1);
+  const fatigueBadge = document.getElementById('dashFatigueBadge');
+  if (fatigueBadge) {
+    if (AppState.fatigueStatus === 'fatigued') {
+      fatigueBadge.className = 'px-2 py-0.5 rounded-full text-xs font-mono bg-rose-950/60 text-rose-300 border border-rose-800/60';
+      fatigueBadge.textContent = 'Alerta de Fatiga (+8 s/km adaptativo)';
+    } else if (AppState.fatigueStatus === 'supercompensated') {
+      fatigueBadge.className = 'px-2 py-0.5 rounded-full text-xs font-mono bg-emerald-950/60 text-emerald-300 border border-emerald-800/60';
+      fatigueBadge.textContent = 'Supercompensación Activa';
+    } else {
+      fatigueBadge.className = 'px-2 py-0.5 rounded-full text-xs font-mono bg-slate-800 text-slate-300 border border-slate-700';
+      fatigueBadge.textContent = 'Equilibrio Fisiológico Normal';
+    }
   }
-}
 
-function renderProfileSelector() {
-  const select = document.getElementById('profileSelector');
-  if (!select) return;
-  select.innerHTML = '';
-
-  if (AppState.profiles.length === 0) {
-    const opt = document.createElement('option');
-    opt.textContent = 'Sin perfiles (Crear Perfil)';
-    select.appendChild(opt);
-    return;
-  }
-
-  AppState.profiles.forEach(p => {
-    const opt = document.createElement('option');
-    opt.value = p.id;
-    opt.textContent = `${p.name} [${p.category || 'Atleta'}]`;
-    if (p.id === AppState.currentProfileId) opt.selected = true;
-    select.appendChild(opt);
-  });
-}
-
-function renderDashboardStats() {
-  const profile = getCurrentProfile();
-  const profileWorkouts = profile ? AppState.workouts.filter(w => w.profileId === profile.id) : [];
-
-  const totalKm = profileWorkouts.reduce((acc, w) => acc + (parseFloat(w.distance) || 0), 0);
-  const totalRuns = profileWorkouts.length;
-  const acwrData = calculateACWR(profileWorkouts);
+  // 3. Totales y ACWR
+  const totalKm = AppState.workouts.reduce((acc, w) => acc + (parseFloat(w.distance) || 0), 0);
+  const totalRuns = AppState.workouts.length;
+  const acwrData = calculateACWR(AppState.workouts);
 
   document.getElementById('kpiTotalKm').textContent = totalKm.toFixed(1);
   document.getElementById('kpiTotalRuns').textContent = totalRuns;
@@ -877,28 +567,20 @@ function renderDashboardStats() {
   document.getElementById('kpiAcwrBadge').textContent = acwrData.badgeText;
   document.getElementById('kpiAcwrBadge').style.borderColor = acwrData.color;
   document.getElementById('kpiAcwrBadge').style.color = acwrData.color;
-
   document.getElementById('kpiAcuteLoad').textContent = `${acwrData.acuteLoad} AU`;
   document.getElementById('kpiChronicLoad').textContent = `${acwrData.chronicLoad} AU`;
 
-  // Tabla de entrenamientos recientes
+  // 4. Tabla de Entrenamientos Recientes
   const tbody = document.getElementById('recentWorkoutsTableBody');
   if (tbody) {
     tbody.innerHTML = '';
-    const sorted = [...profileWorkouts].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 10);
+    const sorted = [...AppState.workouts].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 8);
 
     if (sorted.length === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="7" class="text-center py-10 text-slate-500 font-mono text-xs">
-            <div class="flex flex-col items-center justify-center gap-2">
-              <span class="text-3xl">🏁</span>
-              <p class="text-slate-300 font-bold">Pizarra limpia: Aún no hay entrenamientos registrados para este perfil.</p>
-              <p class="text-slate-500 text-[11px]">Sube un pantallazo de tu reloj o ingresa tus kilómetros para activar el cálculo de ACWR y desgaste.</p>
-              <button onclick="switchTab('ingest')" class="mt-2 px-4 py-1.5 bg-lime-500 text-slate-950 font-bold text-xs rounded-xl hover:bg-lime-400 transition">
-                + Iniciar Primer Registro
-              </button>
-            </div>
+          <td colspan="6" class="text-center py-8 text-slate-500 font-mono text-xs">
+            Sin sesiones registradas en esta sesión. Tus datos base (5K 19:26 / 1000m 3:30) están activos.
           </td>
         </tr>
       `;
@@ -907,27 +589,16 @@ function renderDashboardStats() {
 
     sorted.forEach(w => {
       const pace = calculatePace(w.distance, w.duration);
-      const gapSec = calculateMinettiGAP(pace.paceSec, w.elevationGain || 0, w.distance);
-      const gapStr = secondsToPaceString(gapSec);
-
+      const shoe = AppState.shoes.find(s => s.id === w.shoeId);
       const tr = document.createElement('tr');
-      tr.className = 'border-b border-slate-800/60 hover:bg-slate-800/30 transition text-xs font-mono';
+      tr.className = 'border-b border-slate-800/80 hover:bg-slate-800/40 transition text-xs font-mono text-slate-300';
       tr.innerHTML = `
-        <td class="py-2.5 px-3 text-slate-300">${w.date}</td>
-        <td class="py-2.5 px-3 text-lime-400 font-bold">${w.distance} km</td>
-        <td class="py-2.5 px-3 text-slate-300">${w.duration}</td>
-        <td class="py-2.5 px-3 text-cyan-400 font-semibold">${pace.paceStr} <span class="text-[10px] text-slate-500">GAP: ${gapStr}</span></td>
-        <td class="py-2.5 px-3 text-slate-400">${w.avgHr ? w.avgHr + ' bpm' : '--'}</td>
-        <td class="py-2.5 px-3 text-slate-400">
-          <span class="px-1.5 py-0.5 rounded text-[10px] ${w.rpe >= 8 ? 'bg-red-950 text-red-400 border border-red-800' : 'bg-slate-800 text-slate-300'}">RPE ${w.rpe || '--'}</span>
-        </td>
-        <td class="py-2.5 px-3 text-right">
-          ${w.screenshotBase64 ? `
-            <button onclick="viewScreenshotModal('${w.id}')" class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-lime-400 rounded border border-lime-500/30 text-[10px]" title="Ver captura de reloj">
-              📸 Ver Reloj
-            </button>
-          ` : `<span class="text-[10px] text-slate-600">Manual</span>`}
-        </td>
+        <td class="py-2.5 px-3">${w.date}</td>
+        <td class="py-2.5 px-3 text-emerald-300 font-bold">${w.distance} km</td>
+        <td class="py-2.5 px-3">${w.duration}</td>
+        <td class="py-2.5 px-3 text-sky-300 font-semibold">${pace.paceStr}</td>
+        <td class="py-2.5 px-3">${w.avgHr ? w.avgHr + ' bpm' : '--'}</td>
+        <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-[11px]">RPE ${w.rpe || '--'}</span></td>
       `;
       tbody.appendChild(tr);
     });
@@ -937,9 +608,6 @@ function renderDashboardStats() {
 function renderACWRChart() {
   const canvas = document.getElementById('acwrChartCanvas');
   if (!canvas) return;
-
-  const profile = getCurrentProfile();
-  const profileWorkouts = profile ? AppState.workouts.filter(w => w.profileId === profile.id) : [];
 
   const labels = [];
   const acuteData = [];
@@ -954,7 +622,7 @@ function renderACWRChart() {
     d.setDate(d.getDate() - i);
     labels.push(`${d.getDate()}/${d.getMonth() + 1}`);
 
-    const res = calculateACWR(profileWorkouts, d);
+    const res = calculateACWR(AppState.workouts, d);
     acuteData.push(res.acuteLoad);
     chronicData.push(res.chronicLoad);
     ratioData.push(res.acwr);
@@ -973,30 +641,30 @@ function renderACWRChart() {
         {
           label: 'Ratio ACWR (Agudo / Crónico)',
           data: ratioData,
-          borderColor: '#a3e635',
-          backgroundColor: 'rgba(163, 230, 53, 0.1)',
-          borderWidth: 2.5,
-          pointRadius: profileWorkouts.length > 0 ? 3 : 0,
-          pointBackgroundColor: '#a3e635',
+          borderColor: '#6ee7b7', // Verde salvia suave
+          backgroundColor: 'rgba(110, 231, 183, 0.08)',
+          borderWidth: 2,
+          pointRadius: AppState.workouts.length > 0 ? 2.5 : 0,
+          pointBackgroundColor: '#6ee7b7',
           tension: 0.3,
           yAxisID: 'yRatio'
         },
         {
-          label: 'Límite Seguro Sup (1.3)',
+          label: 'Límite Seguro (1.3)',
           data: safeZoneUpper,
-          borderColor: '#fbbf24',
-          borderDash: [4, 4],
-          borderWidth: 1.5,
+          borderColor: '#fcd34d', // Ámbar suave
+          borderDash: [3, 3],
+          borderWidth: 1.2,
           pointRadius: 0,
           fill: false,
           yAxisID: 'yRatio'
         },
         {
-          label: 'Límite Seguro Inf (0.8)',
+          label: 'Límite Base (0.8)',
           data: safeZoneLower,
-          borderColor: '#38bdf8',
-          borderDash: [4, 4],
-          borderWidth: 1.5,
+          borderColor: '#94a3b8', // Gris acero
+          borderDash: [3, 3],
+          borderWidth: 1.2,
           pointRadius: 0,
           fill: false,
           yAxisID: 'yRatio'
@@ -1004,8 +672,8 @@ function renderACWRChart() {
         {
           label: 'Carga Aguda (7d)',
           data: acuteData,
-          borderColor: '#06b6d4',
-          backgroundColor: 'rgba(6, 182, 212, 0.15)',
+          borderColor: '#38bdf8', // Azul suave
+          backgroundColor: 'rgba(56, 189, 248, 0.1)',
           borderWidth: 1,
           pointRadius: 0,
           fill: true,
@@ -1024,16 +692,16 @@ function renderACWRChart() {
           labels: { color: '#94a3b8', font: { family: 'monospace', size: 10 } }
         },
         tooltip: {
-          backgroundColor: '#0f172a',
-          titleColor: '#a3e635',
-          bodyColor: '#f8fafc',
-          borderColor: '#334155',
+          backgroundColor: '#1e293b',
+          titleColor: '#6ee7b7',
+          bodyColor: '#cbd5e1',
+          borderColor: '#475569',
           borderWidth: 1
         }
       },
       scales: {
         x: {
-          grid: { color: 'rgba(51, 65, 85, 0.3)' },
+          grid: { color: 'rgba(51, 65, 85, 0.2)' },
           ticks: { color: '#64748b', font: { family: 'monospace', size: 9 } }
         },
         yRatio: {
@@ -1041,523 +709,237 @@ function renderACWRChart() {
           position: 'left',
           min: 0,
           max: 2.0,
-          grid: { color: 'rgba(51, 65, 85, 0.2)' },
-          ticks: { color: '#a3e635', font: { family: 'monospace', size: 10 } },
-          title: { display: true, text: 'Ratio ACWR', color: '#a3e635', font: { size: 10, family: 'monospace' } }
+          grid: { color: 'rgba(51, 65, 85, 0.15)' },
+          ticks: { color: '#6ee7b7', font: { family: 'monospace', size: 10 } },
+          title: { display: true, text: 'Ratio ACWR', color: '#6ee7b7', font: { size: 10, family: 'monospace' } }
         },
         yLoad: {
           type: 'linear',
           position: 'right',
           grid: { display: false },
-          ticks: { color: '#06b6d4', font: { family: 'monospace', size: 10 } },
-          title: { display: true, text: 'Carga (AU)', color: '#06b6d4', font: { size: 10, family: 'monospace' } }
+          ticks: { color: '#38bdf8', font: { family: 'monospace', size: 10 } },
+          title: { display: true, text: 'Carga AU', color: '#38bdf8', font: { size: 10, family: 'monospace' } }
         }
       }
     }
   });
 }
 
-function renderScientificCalcs() {
-  const profile = getCurrentProfile();
-  if (!profile) return;
-
-  // 1. Zonas Karvonen
-  const zones = calculateKarvonenZones(profile.hrRest, profile.hrMax);
-  const zonesContainer = document.getElementById('karvonenZonesList');
-  if (zonesContainer) {
-    zonesContainer.innerHTML = '';
-    zones.forEach(z => {
-      const card = document.createElement('div');
-      card.className = 'p-3 rounded-xl bg-slate-950/70 border border-slate-800 flex justify-between items-center';
-      card.innerHTML = `
-        <div class="flex items-center gap-3">
-          <span class="w-2.5 h-8 rounded-full" style="background-color: ${z.color}"></span>
-          <div>
-            <div class="text-xs font-bold text-white font-mono">${z.zone}: ${z.name}</div>
-            <div class="text-[11px] text-slate-400">${z.desc}</div>
-          </div>
-        </div>
-        <div class="text-right font-mono">
-          <div class="text-sm font-bold text-lime-400">${z.min} - ${z.max} <span class="text-[10px] text-slate-500">bpm</span></div>
-          <div class="text-[10px] text-slate-400">${z.pctRange} HRR</div>
-        </div>
-      `;
-      zonesContainer.appendChild(card);
-    });
-  }
-
-  // 2. VDOT Jack Daniels
-  const paces = getDanielsTrainingPaces(profile.vdot);
-  document.getElementById('currentVdotDisplay').textContent = profile.vdot;
-  document.getElementById('paceEasy').textContent = `${paces.easy} /km`;
-  document.getElementById('paceMarathon').textContent = `${paces.marathon} /km`;
-  document.getElementById('paceThreshold').textContent = `${paces.threshold} /km`;
-  document.getElementById('paceInterval').textContent = `${paces.interval} /km`;
-  document.getElementById('paceRepetition').textContent = `${paces.repetition} /km`;
-}
-
-function renderTrainingPlan() {
-  const profile = getCurrentProfile();
-  const container = document.getElementById('microcycleContainer');
-  const title = document.getElementById('planTitle');
-  const subtitle = document.getElementById('planSubtitle');
+function renderMicrocycle() {
+  const container = document.getElementById('microcycleCardsContainer');
   if (!container) return;
 
-  const isElite = profile?.planType === 'elite';
-  title.textContent = isElite ? 'LÓGICA A: MICRO-CICLO ÉLITE (6 DÍAS / SEMANA)' : 'LÓGICA B: MICRO-CICLO PROGRESIÓN SUB-60 (5 DÍAS / SEMANA)';
-  subtitle.textContent = isElite ? 'Enfoque: Bajar 10K a 38:00 y 5K a 18:00 | Alto volumen y series umbral' : 'Enfoque: Bajar 10K de 1:23:00 a 60:00-65:00 | Base aeróbica y prevención de periostitis';
-
-  const planA = [
-    { day: 'Lunes', type: 'Recuperación Activa Z1', volume: '8.0 km', pace: '4:45 /km', desc: 'Rodaje regenerativo suave + 15 min de estiramientos dinámicos y movilidad de cadera.' },
-    { day: 'Martes', type: 'Series VO2máx en Pista', volume: '14.0 km', pace: '3:35 /km', desc: '3 km calentamiento + 6 x 1000m a 3:35/km (recup 90s trote Z1) + 2 km enfriamiento.' },
-    { day: 'Miércoles', type: 'Base Aeróbica Z2 + Rectas', volume: '12.0 km', pace: '4:20 /km', desc: 'Rodaje continuo Z2 estricto finalizando con 6 aceleraciones técnicas de 100m en césped.' },
-    { day: 'Jueves', type: 'Tempo Umbral de Lactato Z4', volume: '15.0 km', pace: '3:45 /km', desc: '3 km cal. + 3 x 3000m sostenido a 3:45/km (recup 2 min Z1) + 3 km enfriamiento.' },
-    { day: 'Viernes', type: 'Descanso Activo / Core', volume: '0 km', pace: '--', desc: 'Sesión de estabilidad lumbopélvica, puente de glúteos, planchas y prevención excéntrica.' },
-    { day: 'Sábado', type: 'Fartlek Piramidal', volume: '11.0 km', pace: 'Variable', desc: 'Cambios de ritmo: 1-2-3-2-1 min en Z5 con igual tiempo de recuperación en Z2.' },
-    { day: 'Domingo', type: 'Tirada Larga Progresiva', volume: '22.0 km', pace: '4:15 - 4:40 /km', desc: '14 km en Zona 2 + 6 km en Ritmo Maratón (M) + 2 km de vuelta a la calma.' }
-  ];
-
-  const planB = [
-    { day: 'Lunes', type: 'Descanso Total + Protocolo Tibial', volume: '0 km', pace: '--', desc: 'Cero impacto. 3 series de 20 elevaciones de puntas contra pared (prevención de periostitis).' },
-    { day: 'Martes', type: 'Base Aeróbica Z2 (Sin Fatiga)', volume: '6.0 km', pace: '7:00 /km', desc: 'Carrera suave. Si la FC supera 140 bpm, caminar 30s hasta estabilizar respiración.' },
-    { day: 'Miércoles', type: 'Descanso Activo / Paseo', volume: '0 km', pace: '--', desc: 'Caminata relajada de 40 min con mascotas. Movilidad de tobillos con banda elástica.' },
-    { day: 'Jueves', type: 'Fartlek Controlado Sub-60', volume: '5.5 km', pace: '5:55 / 7:15 /km', desc: '1.5 km Z2 + 8 repeticiones de [1 min a 5:55/km + 1 min caminata enérgica] + 1 km enfriamiento.' },
-    { day: 'Viernes', type: 'Fuerza Excéntrica para Corredores', volume: '0 km', pace: '--', desc: 'Sentadillas búlgaras, elevación de talones en escalón con bajada lenta en 3s.' },
-    { day: 'Sábado', type: 'Rodaje a Ritmo Objetivo Sub-60', volume: '8.0 km', pace: '5:59 /km', desc: '2 km Z2 + 4 km sostenidos a 5:59/km (ritmo meta para 10K en 59:59) + 2 km suaves.' },
-    { day: 'Domingo', type: 'Tirada Larga Aeróbica Conversacional', volume: '10.0 km', pace: '7:15 /km', desc: 'Rodaje continuo a ritmo conversacional. Hidratación regular cada 2.5 km.' }
-  ];
-
-  const activePlan = isElite ? planA : planB;
+  const plan = generateDynamicMicrocycle();
   container.innerHTML = '';
 
-  activePlan.forEach(p => {
+  plan.forEach(item => {
     const card = document.createElement('div');
-    card.className = 'p-4 rounded-xl bg-slate-950/70 border border-slate-800/80 hover:border-slate-700 transition flex flex-col md:flex-row md:items-center justify-between gap-3';
+    card.className = 'p-4 rounded-xl bg-slate-850 border border-slate-800 hover:border-slate-700/80 transition flex flex-col md:flex-row md:items-center justify-between gap-3';
     card.innerHTML = `
       <div class="flex items-start gap-3">
-        <span class="px-2 py-1 bg-slate-800 text-lime-400 font-mono text-xs font-bold rounded-lg">${p.day}</span>
+        <span class="px-2.5 py-1 rounded-lg bg-slate-800 text-emerald-300 font-mono text-xs font-bold border border-slate-700">${item.day}</span>
         <div>
-          <h4 class="text-sm font-bold text-white font-mono">${p.type}</h4>
-          <p class="text-xs text-slate-400 mt-0.5">${p.desc}</p>
+          <h4 class="text-sm font-bold font-mono text-slate-200">${item.type}</h4>
+          <p class="text-xs text-slate-400 mt-0.5 leading-relaxed">${item.desc}</p>
+          <div class="flex items-center gap-2 mt-2 text-[11px] font-mono text-slate-400">
+            <span>👟 ${item.shoeName}</span>
+            <span>•</span>
+            <span class="text-sky-300">FC Objetivo: ${item.hrTarget}</span>
+          </div>
         </div>
       </div>
-      <div class="flex items-center gap-4 text-right font-mono self-end md:self-center">
+
+      <div class="flex items-center gap-4 text-right font-mono self-end md:self-center shrink-0">
         <div>
-          <div class="text-xs text-slate-500 uppercase">Volumen</div>
-          <div class="text-sm font-bold text-cyan-400">${p.volume}</div>
+          <span class="text-[10px] text-slate-500 uppercase block">Volumen</span>
+          <span class="text-sm font-bold text-slate-200">${item.volume}</span>
         </div>
         <div>
-          <div class="text-xs text-slate-500 uppercase">Ritmo</div>
-          <div class="text-sm font-bold text-lime-400">${p.pace}</div>
+          <span class="text-[10px] text-slate-500 uppercase block">Ritmo Sugerido</span>
+          <span class="text-sm font-bold text-emerald-300">${item.targetPace}</span>
         </div>
-        <button onclick="prefillIngestFromPlan('${p.volume.replace(' km', '')}', '${p.type}')" class="px-2.5 py-1 bg-slate-900 border border-lime-500/30 text-lime-400 hover:bg-lime-950 text-xs rounded-lg transition" title="Registrar esta sesión">
-          + Ingerir
-        </button>
+        ${item.volume !== '0.0 km' ? `
+          <button onclick="prefillWorkoutFromPlan('${item.volume.replace(' km', '')}', '${item.shoeId}', '${item.type}')" class="px-3 py-1.5 bg-slate-800 border border-emerald-500/30 text-emerald-300 hover:bg-slate-700 text-xs rounded-lg transition" title="Registrar esta sesión">
+            + Registrar
+          </button>
+        ` : ''}
       </div>
     `;
     container.appendChild(card);
   });
 }
 
-function renderShoes() {
-  const profile = getCurrentProfile();
-  const shoesContainer = document.getElementById('shoesListContainer');
-  const shoeSelectIngest = document.getElementById('ingestShoeSelect');
-  if (!shoesContainer) return;
-
-  const profileShoes = profile ? AppState.shoes.filter(s => s.profileId === profile.id) : [];
-
-  if (shoeSelectIngest) {
-    shoeSelectIngest.innerHTML = '<option value="">-- Sin asignar calzado --</option>';
-    profileShoes.forEach(s => {
-      const opt = document.createElement('option');
-      opt.value = s.id;
-      opt.textContent = `${s.brand} ${s.model} (${s.currentKm.toFixed(1)} / ${s.maxKm} km)`;
-      shoeSelectIngest.appendChild(opt);
+function renderScientificZones() {
+  // 1. Zonas Karvonen
+  const zones = getKarvonenZones();
+  const zonesContainer = document.getElementById('karvonenZonesList');
+  if (zonesContainer) {
+    zonesContainer.innerHTML = '';
+    zones.forEach(z => {
+      const card = document.createElement('div');
+      card.className = 'p-3 rounded-xl bg-slate-850 border border-slate-800 flex justify-between items-center';
+      card.innerHTML = `
+        <div class="flex items-center gap-3">
+          <span class="w-2 h-7 rounded-full" style="background-color: ${z.color}"></span>
+          <div>
+            <div class="text-xs font-bold font-mono text-slate-200">${z.zone}: ${z.name}</div>
+            <div class="text-[11px] text-slate-400">${z.desc}</div>
+          </div>
+        </div>
+        <div class="text-right font-mono">
+          <div class="text-sm font-bold text-emerald-300">${z.min} - ${z.max} <span class="text-[10px] text-slate-500">bpm</span></div>
+          <div class="text-[10px] text-slate-500">${z.pct} HRR</div>
+        </div>
+      `;
+      zonesContainer.appendChild(card);
     });
   }
 
-  shoesContainer.innerHTML = '';
-  if (profileShoes.length === 0) {
-    shoesContainer.innerHTML = `
-      <div class="col-span-2 p-8 text-center text-slate-500 font-mono text-xs border border-dashed border-slate-800 rounded-2xl">
-        <p class="text-slate-300 font-bold mb-1">👟 Sin zapatillas registradas para este atleta.</p>
-        <p class="text-slate-500 mb-3">Registra tus tenis para controlar el desgaste de espuma (PEBAX / EVA / TPU) y placas de carbono.</p>
-        <button onclick="checkPermissionOrPrompt(() => document.getElementById('addShoeModal').classList.remove('hidden'))" class="px-3 py-1.5 bg-lime-500 text-slate-950 font-bold rounded-xl text-xs hover:bg-lime-400 transition">
-          + Agregar Tu Primer Par
-        </button>
-      </div>
-    `;
-    return;
+  // 2. Ritmos VDOT Jack Daniels
+  const paces = getDanielsPaces(AppState.dynamicVdot, AppState.fatigueAdjustmentSec);
+  document.getElementById('paceEasyVal').textContent = `${paces.easy} /km`;
+  document.getElementById('paceMarathonVal').textContent = `${paces.marathon} /km`;
+  document.getElementById('paceThresholdVal').textContent = `${paces.threshold} /km`;
+  document.getElementById('paceIntervalVal').textContent = `${paces.interval} /km`;
+  document.getElementById('paceRepetitionVal').textContent = `${paces.repetition} /km`;
+}
+
+function renderShoeRotation() {
+  const container = document.getElementById('shoesListContainer');
+  const select = document.getElementById('workoutShoeSelect');
+  if (!container) return;
+
+  if (select) {
+    select.innerHTML = '<option value="">-- Sin asignar calzado --</option>';
+    AppState.shoes.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.id;
+      opt.textContent = `${s.brand} ${s.model} (${s.currentKm.toFixed(1)} / ${s.maxKm} km)`;
+      select.appendChild(opt);
+    });
   }
 
-  profileShoes.forEach(shoe => {
+  container.innerHTML = '';
+  AppState.shoes.forEach(shoe => {
     const pct = Math.min(100, Math.round((shoe.currentKm / shoe.maxKm) * 100));
-    let colorClass = 'bg-lime-500';
-    let textClass = 'text-lime-400';
-    if (pct > 85) {
-      colorClass = 'bg-red-500';
-      textClass = 'text-red-400';
-    } else if (pct > 60) {
-      colorClass = 'bg-amber-500';
-      textClass = 'text-amber-400';
+    let colorClass = 'bg-emerald-400';
+    let textClass = 'text-emerald-300';
+    if (pct > 80) {
+      colorClass = 'bg-rose-400';
+      textClass = 'text-rose-300';
+    } else if (pct > 55) {
+      colorClass = 'bg-amber-300';
+      textClass = 'text-amber-300';
     }
 
     const card = document.createElement('div');
-    card.className = 'p-4 rounded-xl bg-slate-950/70 border border-slate-800 flex flex-col justify-between gap-3';
+    card.className = 'p-4 rounded-xl bg-slate-850 border border-slate-800 space-y-3';
     card.innerHTML = `
       <div class="flex justify-between items-start">
         <div>
-          <span class="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-slate-800 text-slate-400">${shoe.usage}</span>
-          <h4 class="text-base font-bold text-white font-mono mt-1">${shoe.brand} ${shoe.model}</h4>
-          <p class="text-xs text-slate-400 font-mono">${shoe.foam}</p>
+          <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">${shoe.usage}</span>
+          <h4 class="text-sm font-bold font-mono text-slate-200 mt-1">${shoe.brand} ${shoe.model}</h4>
         </div>
         <div class="text-right">
-          <span class="text-lg font-bold font-mono ${textClass}">${pct}%</span>
-          <div class="text-[10px] text-slate-500 uppercase font-mono">Desgaste</div>
+          <span class="text-base font-bold font-mono ${textClass}">${pct}%</span>
+          <span class="text-[10px] text-slate-500 font-mono block">Desgaste</span>
         </div>
       </div>
 
       <div>
         <div class="flex justify-between text-xs font-mono mb-1">
-          <span class="text-slate-400">Kilometraje acumulado:</span>
-          <span class="text-white font-bold">${shoe.currentKm.toFixed(1)} / ${shoe.maxKm} km</span>
+          <span class="text-slate-400">Kilómetros acumulados:</span>
+          <span class="text-slate-200 font-bold">${shoe.currentKm.toFixed(1)} / ${shoe.maxKm} km</span>
         </div>
-        <div class="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
+        <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
           <div class="${colorClass} h-full rounded-full transition-all duration-500" style="width: ${pct}%"></div>
         </div>
       </div>
 
-      <div class="flex justify-between items-center pt-2 border-t border-slate-800/80 text-xs font-mono">
-        <span class="text-slate-500">${Math.max(0, shoe.maxKm - shoe.currentKm).toFixed(1)} km restantes</span>
-        <button onclick="checkPermissionOrPrompt(() => deleteShoe('${shoe.id}'))" class="text-slate-500 hover:text-rose-400 transition" title="Eliminar par">
-          Eliminar
-        </button>
+      <div class="text-[11px] font-mono text-slate-500 flex justify-between">
+        <span>${Math.max(0, shoe.maxKm - shoe.currentKm).toFixed(1)} km de vida útil restantes</span>
       </div>
     `;
-    shoesContainer.appendChild(card);
+    container.appendChild(card);
   });
 }
 
-function prefillIngestFromPlan(distStr, typeStr) {
-  switchTab('ingest');
-  const distInput = document.getElementById('ingestDistance');
-  const notesInput = document.getElementById('ingestNotes');
+function prefillWorkoutFromPlan(distStr, shoeId, typeStr) {
+  switchTab('log');
+  const distInput = document.getElementById('workoutDistance');
+  const shoeSelect = document.getElementById('workoutShoeSelect');
+  const notesInput = document.getElementById('workoutNotes');
+
   if (distInput) distInput.value = distStr;
+  if (shoeSelect && shoeId) shoeSelect.value = shoeId;
   if (notesInput) notesInput.value = `Sesión de plan: ${typeStr}`;
-  showToast(`📋 Datos precargados desde el plan (${distStr} km). Adjunta captura o guarda.`, 'info');
-}
-
-function viewScreenshotModal(workoutId) {
-  const workout = AppState.workouts.find(w => w.id === workoutId);
-  if (!workout || !workout.screenshotBase64) return;
-
-  const modal = document.getElementById('viewScreenshotModal');
-  const img = document.getElementById('viewScreenshotModalImg');
-  const title = document.getElementById('viewScreenshotModalDetails');
-
-  if (modal && img) {
-    img.src = workout.screenshotBase64;
-    if (title) title.textContent = `${workout.date} - ${workout.distance} km en ${workout.duration} (${workout.brandPreset || 'Reloj'})`;
-    modal.classList.remove('hidden');
-  }
+  showToast(`📋 ${distStr} km precargados para ${typeStr}.`, 'info');
 }
 
 // ============================================================================
-// 9. FORMULARIO DE INGESTA DE SMARTWATCHES
+// 6. FORMULARIO DE REGISTRO DE ENTRENAMIENTOS
 // ============================================================================
 
-function setupIngestForm() {
-  const form = document.getElementById('smartwatchIngestForm');
+function setupWorkoutForm() {
+  const form = document.getElementById('workoutLogForm');
   if (!form) return;
 
-  const dateInput = document.getElementById('ingestDate');
+  const dateInput = document.getElementById('workoutDate');
   if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
 
   form.addEventListener('submit', (e) => {
     e.preventDefault();
 
-    if (!AppState.currentProfileId) {
-      showToast('⚠️ Crea o selecciona un perfil primero.', 'error');
-      openCreateProfileModal(true);
+    const distance = parseFloat(document.getElementById('workoutDistance').value);
+    const durationStr = document.getElementById('workoutDuration').value.trim();
+    const avgHr = parseInt(document.getElementById('workoutAvgHr').value) || null;
+    const maxHr = parseInt(document.getElementById('workoutMaxHr').value) || null;
+    const rpe = parseInt(document.getElementById('workoutRpe').value) || 5;
+    const shoeId = document.getElementById('workoutShoeSelect').value;
+    const date = document.getElementById('workoutDate').value;
+    const notes = document.getElementById('workoutNotes').value;
+
+    if (isNaN(distance) || distance <= 0 || !durationStr) {
+      showToast('⚠️ Ingresa una distancia y tiempo válidos.', 'error');
       return;
     }
 
-    checkPermissionOrPrompt(() => {
-      const distance = parseFloat(document.getElementById('ingestDistance').value);
-      const durationStr = document.getElementById('ingestDuration').value.trim();
-      const elevationGain = parseFloat(document.getElementById('ingestElevation').value) || 0;
-      const tempC = parseFloat(document.getElementById('ingestTemp').value);
-      const humidityPct = parseFloat(document.getElementById('ingestHumidity').value);
-      const avgHr = parseInt(document.getElementById('ingestAvgHr').value) || null;
-      const maxHr = parseInt(document.getElementById('ingestMaxHr').value) || null;
-      const cadence = parseInt(document.getElementById('ingestCadence').value) || null;
-      const vo2Max = parseFloat(document.getElementById('ingestVo2').value) || null;
-      const rpe = parseInt(document.getElementById('ingestRpe').value) || 6;
-      const shoeId = document.getElementById('ingestShoeSelect').value;
-      const watchPreset = document.getElementById('ingestBrandPreset').value;
-      const notes = document.getElementById('ingestNotes').value;
-      const date = document.getElementById('ingestDate').value;
+    const newWorkout = {
+      id: `run-${Date.now()}`,
+      date: date || new Date().toISOString().split('T')[0],
+      distance,
+      duration: durationStr,
+      avgHr,
+      maxHr,
+      rpe,
+      shoeId,
+      notes
+    };
 
-      if (isNaN(distance) || distance <= 0 || !durationStr) {
-        showToast('⚠️ Por favor ingresa una distancia y tiempo válidos.', 'error');
-        return;
+    AppState.workouts.unshift(newWorkout);
+    saveWorkouts();
+
+    // Actualizar kilometraje de la zapatilla
+    if (shoeId) {
+      const shoe = AppState.shoes.find(s => s.id === shoeId);
+      if (shoe) {
+        shoe.currentKm += distance;
+        saveShoes();
       }
+    }
 
-      const newWorkout = {
-        id: `run-${Date.now()}`,
-        profileId: AppState.currentProfileId,
-        date: date || new Date().toISOString().split('T')[0],
-        distance,
-        duration: durationStr,
-        elevationGain,
-        tempC,
-        humidityPct,
-        avgHr,
-        maxHr,
-        cadence,
-        vo2MaxEstimate: vo2Max,
-        rpe,
-        shoeId,
-        brandPreset: watchPreset,
-        notes,
-        screenshotBase64: AppState.currentScreenshotBase64 || null
-      };
+    showToast(`✅ Sesión de ${distance} km registrada. Carga ACWR y calzado actualizados.`, 'success');
+    form.reset();
+    if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
 
-      AppState.workouts.unshift(newWorkout);
-      saveWorkouts();
-
-      // Desgaste de calzado
-      if (shoeId) {
-        const shoe = AppState.shoes.find(s => s.id === shoeId);
-        if (shoe) {
-          shoe.currentKm += distance;
-          saveShoes();
-        }
-      }
-
-      // Limpiar captura pendiente
-      AppState.currentScreenshotBase64 = null;
-      const previewContainer = document.getElementById('screenshotPreviewContainer');
-      const dropZone = document.getElementById('screenshotDropZone');
-      const fileInput = document.getElementById('screenshotFileInput');
-      if (previewContainer) previewContainer.classList.add('hidden');
-      if (dropZone) dropZone.classList.remove('hidden');
-      if (fileInput) fileInput.value = '';
-
-      showToast(`✅ Sesión de ${distance} km registrada correctamente y sincronizada.`, 'success');
-      form.reset();
-      if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
-      switchTab('dashboard');
-      renderAll();
-    });
+    analyzeFatigueAndAdaptation();
+    switchTab('dashboard');
+    renderAll();
   });
 }
 
 // ============================================================================
-// 10. LABORATORIO CIENTÍFICO Y MODALES ADICIONALES
-// ============================================================================
-
-function setupScientificLabForms() {
-  const sweatBtn = document.getElementById('btnCalculateSweat');
-  if (sweatBtn) {
-    sweatBtn.addEventListener('click', () => {
-      const pre = document.getElementById('sweatPreWeight').value;
-      const post = document.getElementById('sweatPostWeight').value;
-      const fluid = document.getElementById('sweatFluidMl').value;
-      const dur = document.getElementById('sweatDurationMin').value;
-
-      const res = calculateSweatTest(pre, post, fluid, dur);
-      if (!res) {
-        showToast('⚠️ Completa todos los campos numéricos del test.', 'error');
-        return;
-      }
-
-      document.getElementById('sweatRateResult').textContent = `${res.sweatRatePerHourL} L/h`;
-      document.getElementById('sweatTotalLostResult').textContent = `${res.totalSweatLostL} L`;
-      document.getElementById('sweatDehydrationResult').textContent = `${res.dehydrationPct}%`;
-      document.getElementById('sweatRehydrationResult').textContent = `${res.rehydrationNeededMl} ml`;
-      document.getElementById('sweatSodiumResult').textContent = `${res.sodiumReplenishmentMg} mg Na+`;
-      document.getElementById('sweatResultsBox').classList.remove('hidden');
-    });
-  }
-
-  const windowBtn = document.getElementById('btnCalculateWindow');
-  if (windowBtn) {
-    windowBtn.addEventListener('click', () => {
-      const weight = document.getElementById('metaWeight').value;
-      const dur = document.getElementById('metaDuration').value;
-      const intensity = document.getElementById('metaIntensity').value;
-
-      const res = calculateMetabolicWindow(weight, dur, intensity);
-      if (!res) {
-        showToast('⚠️ Ingresa un peso y duración válidos.', 'error');
-        return;
-      }
-
-      document.getElementById('metaChoResult').textContent = `${res.choGrams} g`;
-      document.getElementById('metaProResult').textContent = `${res.proGrams} g`;
-      document.getElementById('metaRatioResult').textContent = res.ratio;
-      document.getElementById('metaKcalResult').textContent = `${res.totalKcal} kcal`;
-
-      const list = document.getElementById('metaSuggestionsList');
-      list.innerHTML = '';
-      res.foodSuggestions.forEach(s => {
-        const li = document.createElement('li');
-        li.textContent = s;
-        list.appendChild(li);
-      });
-
-      document.getElementById('metaResultsBox').classList.remove('hidden');
-    });
-  }
-
-  const gapCalcBtn = document.getElementById('btnCalcInteractiveGap');
-  if (gapCalcBtn) {
-    gapCalcBtn.addEventListener('click', () => {
-      const dist = parseFloat(document.getElementById('gapDistInput').value) || 10;
-      const paceStr = document.getElementById('gapPaceInput').value || '5:00';
-      const elev = parseFloat(document.getElementById('gapElevInput').value) || 0;
-      const temp = parseFloat(document.getElementById('gapTempInput').value) || 20;
-      const hum = parseFloat(document.getElementById('gapHumInput').value) || 50;
-
-      const paceSec = timeStringToSeconds(paceStr);
-      const gapSec = calculateMinettiGAP(paceSec, elev, dist);
-      const weather = calculateDewPointAndPenalty(temp, hum, paceSec);
-
-      document.getElementById('gapOutputPace').textContent = secondsToPaceString(gapSec);
-      document.getElementById('weatherOutputDew').textContent = `${weather.dewPoint}°C`;
-      document.getElementById('weatherOutputPenalty').textContent = `+${weather.penaltySecPerKm} s/km (${weather.penaltyPct}%)`;
-    });
-  }
-}
-
-function setupShoeModal() {
-  const addBtn = document.getElementById('btnOpenAddShoeModal');
-  const modal = document.getElementById('addShoeModal');
-  const closeBtn = document.getElementById('btnCloseShoeModal');
-  const form = document.getElementById('addShoeForm');
-
-  if (addBtn) addBtn.addEventListener('click', () => checkPermissionOrPrompt(() => modal.classList.remove('hidden')));
-  if (closeBtn) closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
-
-  if (form) {
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const brand = document.getElementById('shoeBrand').value.trim();
-      const model = document.getElementById('shoeModel').value.trim();
-      const foam = document.getElementById('shoeFoam').value.trim();
-      const usage = document.getElementById('shoeUsage').value;
-      const maxKm = parseFloat(document.getElementById('shoeMaxKm').value) || 700;
-      const currentKm = parseFloat(document.getElementById('shoeCurrentKm').value) || 0;
-
-      if (!brand || !model) {
-        showToast('⚠️ Ingresa la marca y modelo.', 'error');
-        return;
-      }
-
-      const newShoe = {
-        id: `shoe-${Date.now()}`,
-        profileId: AppState.currentProfileId,
-        brand,
-        model,
-        foam,
-        usage,
-        maxKm,
-        currentKm,
-        active: true
-      };
-
-      AppState.shoes.push(newShoe);
-      saveShoes();
-      modal.classList.add('hidden');
-      form.reset();
-      renderShoes();
-      showToast(`👟 Zapatilla ${brand} ${model} añadida con éxito.`, 'success');
-    });
-  }
-}
-
-function deleteShoe(shoeId) {
-  AppState.shoes = AppState.shoes.filter(s => s.id !== shoeId);
-  saveShoes();
-  renderShoes();
-  showToast('🗑️ Zapatilla eliminada de la rotación.', 'info');
-}
-
-// ============================================================================
-// 11. MODAL DE AUTENTICACIÓN POR PIN
-// ============================================================================
-
-let pendingActionCallback = null;
-
-function openPinModal(callback) {
-  pendingActionCallback = callback;
-  const modal = document.getElementById('pinAuthModal');
-  const pinInput = document.getElementById('pinInputElement');
-  if (modal) modal.classList.remove('hidden');
-  if (pinInput) {
-    pinInput.value = '';
-    pinInput.focus();
-  }
-}
-
-function closePinModal() {
-  const modal = document.getElementById('pinAuthModal');
-  if (modal) modal.classList.add('hidden');
-  pendingActionCallback = null;
-}
-
-function setupPinModalEvents() {
-  const submitBtn = document.getElementById('btnSubmitPin');
-  const cancelBtn = document.getElementById('btnCancelPin');
-  const pinInput = document.getElementById('pinInputElement');
-
-  if (submitBtn && pinInput) {
-    submitBtn.addEventListener('click', () => {
-      const val = pinInput.value.trim();
-      if (verifyPin(val)) {
-        if (typeof pendingActionCallback === 'function') {
-          pendingActionCallback();
-        }
-      }
-    });
-
-    pinInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') submitBtn.click();
-    });
-  }
-
-  if (cancelBtn) cancelBtn.addEventListener('click', closePinModal);
-
-  const lockToggle = document.getElementById('lockToggleBtn');
-  if (lockToggle) {
-    lockToggle.addEventListener('click', () => {
-      if (AppState.isUnlocked) {
-        lockProfile();
-      } else {
-        openPinModal();
-      }
-    });
-  }
-
-  // Botón para crear nuevo perfil adicional desde header
-  const newProfileBtn = document.getElementById('btnHeaderNewProfile');
-  if (newProfileBtn) {
-    newProfileBtn.addEventListener('click', () => openCreateProfileModal(false));
-  }
-
-  // Modal visor de pantallazos
-  const closeViewScreenshotBtn = document.getElementById('btnCloseViewScreenshot');
-  if (closeViewScreenshotBtn) {
-    closeViewScreenshotBtn.addEventListener('click', () => {
-      document.getElementById('viewScreenshotModal').classList.add('hidden');
-    });
-  }
-}
-
-// ============================================================================
-// 12. NOTIFICACIONES TOAST FLOTANTES
+// 7. NOTIFICACIONES TOAST FLOTANTES
 // ============================================================================
 
 function showToast(message, type = 'info') {
@@ -1565,11 +947,11 @@ function showToast(message, type = 'info') {
   if (!container) return;
 
   const toast = document.createElement('div');
-  const bg = type === 'success' ? 'bg-slate-900 border-lime-500 text-lime-400' :
-             type === 'error' ? 'bg-slate-900 border-red-500 text-red-400' :
-             'bg-slate-900 border-cyan-500 text-cyan-400';
+  const bg = type === 'success' ? 'bg-slate-800 border-emerald-500/50 text-emerald-300' :
+             type === 'error' ? 'bg-slate-800 border-rose-500/50 text-rose-300' :
+             'bg-slate-800 border-sky-500/50 text-sky-300';
 
-  toast.className = `px-4 py-3 rounded-xl border shadow-2xl flex items-center gap-2 text-xs font-mono transition-all duration-300 transform translate-y-2 opacity-0 ${bg}`;
+  toast.className = `px-4 py-2.5 rounded-xl border shadow-lg flex items-center gap-2 text-xs font-mono transition-all duration-300 transform translate-y-2 opacity-0 ${bg}`;
   toast.textContent = message;
 
   container.appendChild(toast);
@@ -1577,50 +959,34 @@ function showToast(message, type = 'info') {
   setTimeout(() => {
     toast.classList.add('opacity-0');
     setTimeout(() => toast.remove(), 300);
-  }, 3500);
+  }, 3200);
 }
 
 // ============================================================================
-// 13. INICIALIZACIÓN GLOBAL
+// 8. INICIALIZACIÓN GLOBAL
 // ============================================================================
 
 function renderAll() {
-  updateLockBadge();
-  renderProfileSelector();
-  renderDashboardStats();
+  renderDashboard();
   renderACWRChart();
-  renderScientificCalcs();
-  renderTrainingPlan();
-  renderShoes();
+  renderMicrocycle();
+  renderScientificZones();
+  renderShoeRotation();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  initializeStorage();
-
-  const profileSelector = document.getElementById('profileSelector');
-  if (profileSelector) {
-    profileSelector.addEventListener('change', (e) => switchProfile(e.target.value));
-  }
+  initializeData();
 
   document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
   });
 
-  setupCreateProfileForm();
-  setupScreenshotUploader();
-  setupIngestForm();
-  setupScientificLabForms();
-  setupShoeModal();
-  setupPinModalEvents();
-
+  setupWorkoutForm();
   renderAll();
-
-  // Revisar si requiere crear el perfil inicial
-  checkOnboardingRequirement();
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js')
-      .then(reg => console.log('RunPulse Service Worker registrado con éxito:', reg.scope))
-      .catch(err => console.warn('Fallo en el registro de Service Worker:', err));
+      .then(reg => console.log('RunPulse PWA lista para uso offline:', reg.scope))
+      .catch(err => console.warn('SW no registrado:', err));
   }
 });
